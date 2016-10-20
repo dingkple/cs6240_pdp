@@ -25,6 +25,7 @@ public class PrepareMapper extends Mapper<LongWritable, Text, LinkPoint, LinkPoi
     XMLReader xmlReader;
     List<String> linkPageNames;
     HashSet<String> nameSet;
+    HashSet<String> nameSet2;
     private ArrayList<LinkPoint> linkList;
 
 
@@ -34,6 +35,7 @@ public class PrepareMapper extends Mapper<LongWritable, Text, LinkPoint, LinkPoi
             linkPageNames = new ArrayList<>();
             xmlReader = createParser(linkPageNames);
             nameSet = new HashSet<>();
+            nameSet2 = new HashSet<>();
             linkList = new ArrayList<>();
         } catch (SAXException e) {
             e.printStackTrace();
@@ -54,18 +56,17 @@ public class PrepareMapper extends Mapper<LongWritable, Text, LinkPoint, LinkPoi
                 nameSet.add(pageName);
                 context.getCounter(RunPagerank.UpdateCounter.NUMBER_OF_RECORD).increment(1);
 
+                linkList.clear();
                 if (linkPageNames.size() > 0) {
-                    linkList.clear();
                     for (String name : linkPageNames) {
                         if (!name.equals(pageName))
                             linkList.add(new LinkPoint(name, 0, 0));
-//                    nameSet.add(name);
+                        nameSet2.add(name);
                     }
-                    context.write(lp1, new LinkPointArrayWritable(linkList));
                 } else {
                     context.getCounter(RunPagerank.UpdateCounter.NUMBER_OF_SINK).increment(1);
                 }
-
+                context.write(lp1, new LinkPointArrayWritable(linkList));
             }
         }
     }
@@ -76,5 +77,13 @@ public class PrepareMapper extends Mapper<LongWritable, Text, LinkPoint, LinkPoi
                 Utils.numberOfRecords,
                 String.valueOf(nameSet.size()),
                 context.getConfiguration());
+
+        for (String name : nameSet2) {
+            if (!nameSet.contains(name)) {
+                context.write(new LinkPoint(name, 0, 0), new LinkPointArrayWritable());
+                context.getCounter(RunPagerank.UpdateCounter.NUMBER_OF_RECORD).increment(1);
+                context.getCounter(RunPagerank.UpdateCounter.NUMBER_OF_SINK).increment(1);
+            }
+        }
     }
 }

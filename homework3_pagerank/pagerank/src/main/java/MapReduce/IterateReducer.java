@@ -27,11 +27,7 @@ public class IterateReducer extends Reducer<LinkPoint, CombineWritable, LinkPoin
 
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
-        lastTotalWeight = Double.valueOf(Utils.readData(Utils.totalWeight, context.getConfiguration()));
-        if (lastTotalWeight == 0) {
-            lastTotalWeight = 1.0;
-        }
-        numberOfRecs = Long.valueOf(Utils.readData(Utils.numberOfRecords, context.getConfiguration()));
+        numberOfRecs = Long.valueOf(context.getConfiguration().get(Utils.numberOfRecords));
         totalSink = readSink(context.getConfiguration());
         list = new ArrayList<>();
         entropy = 0;
@@ -67,6 +63,7 @@ public class IterateReducer extends Reducer<LinkPoint, CombineWritable, LinkPoin
                     Utils.totalSink,
                     String.valueOf(weightSum),
                     context.getConfiguration());
+            totalWeight += weightSum;
         } else if (key.getLineName().equals(Config.ENTROPY_NAME)) {
             Utils.writeData(
                     Utils.entropy + "_" + context.getConfiguration().get(Config.ITER_NUM),
@@ -78,24 +75,22 @@ public class IterateReducer extends Reducer<LinkPoint, CombineWritable, LinkPoin
             double alpha = Config.PAGERANK_D;
 
             weightSum = alpha * (weightSum + totalSink / numberOfRecs) + (1 - alpha) / numberOfRecs;
-            weightSum /= lastTotalWeight;
+//            weightSum /= lastTotalWeight;
             key.setWeight(weightSum);
-            entropy += weightSum * Math.log(weightSum) / Math.log(2);
+//            entropy += weightSum * Math.log(weightSum) / Math.log(2);
             if (node == null) {
                 node = new LinkPointArrayWritable();
             }
 
             totalWeight += weightSum;
-            if (node != null) {
-                context.write(key, node);
-            }
+            context.write(key, node);
         }
     }
 
     @Override
     protected void cleanup(Context context) throws IOException, InterruptedException {
 //        System.out.format("total weight: %f, entropy: %f ", totalWeight, entropy);
-//        Utils.writeData(Utils.entropy, String.valueOf(-1 * entropy), context.getConfiguration());
+        Utils.writeData(Utils.entropy, String.valueOf(-1 * entropy), context.getConfiguration());
 //        Utils.writeData(Utils.totalWeight, String.valueOf(totalWeight), context.getConfiguration());
 ////        Utils.writeData();
     }
