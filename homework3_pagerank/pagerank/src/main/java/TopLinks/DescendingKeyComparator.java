@@ -10,6 +10,10 @@ public class DescendingKeyComparator extends WritableComparator {
         super(DoubleWritable.class, true);
     }
 
+
+    /*
+        Simple, just reverse the original comparing result
+     */
     @SuppressWarnings("rawtypes")
     @Override
     public int compare(WritableComparable w1, WritableComparable w2) {

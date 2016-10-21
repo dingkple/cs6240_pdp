@@ -7,8 +7,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.net.URLDecoder;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -39,8 +39,6 @@ public class Bz2WikiParser {
             System.exit(1);
         }
 
-//        int linecounter = 0;
-
         BufferedReader reader = null;
         try {
             File inputFile = new File(args[0]);
@@ -49,16 +47,15 @@ public class Bz2WikiParser {
                 System.exit(1);
             }
 
-            List<String> linkPageNames = new LinkedList<>();
-            XMLReader xmlReader = createParser(linkPageNames);
+            Set<String> linkPageNames = new HashSet<>();
             // Parser fills this list with linked page names.
+            XMLReader xmlReader = createParser(linkPageNames);
 
             BZip2CompressorInputStream inputStream = new BZip2CompressorInputStream(new FileInputStream(inputFile));
             reader = new BufferedReader(new InputStreamReader(inputStream));
             String line;
             while ((line = reader.readLine()) != null) {
                 // Each line formatted as (Wiki-page-name:Wiki-page-html).
-//                linecounter += 1;
                 processLine(line, xmlReader, linkPageNames);
 
             }
@@ -66,19 +63,19 @@ public class Bz2WikiParser {
             e.printStackTrace();
         } finally {
             try { reader.close(); } catch (IOException e) {}
-
-//            System.out.format("%d %d\n", linecounter, validkeycounter);
         }
     }
 
-    public static String processLine(String line, XMLReader xmlReader, List<String> linkPageNames) {
+    public static String processLine(String line, XMLReader xmlReader, Set<String> linkPageNames) {
         int delimLoc = line.indexOf(':');
+        if (delimLoc <= 0) {
+            return "";
+        }
         String pageName = line.substring(0, delimLoc);
         String html = line.substring(delimLoc + 1);
         Matcher matcher = namePattern.matcher(pageName);
         if (!matcher.find()) {
             // Skip this html file, name contains (~).
-//            System.out.println(String.format("Invalid: %s", pageName));
             return "";
         }
 
@@ -86,25 +83,10 @@ public class Bz2WikiParser {
         linkPageNames.clear();
         try {
             xmlReader.parse(new InputSource(new StringReader(html)));
-//            List<String> jsoupList = new ArrayList<>();
-//            jsoupTest(html, jsoupList);
-//            HashSet<String> set1 = new HashSet<>(linkPageNames);
-//            HashSet<String> set2 = new HashSet<>(jsoupList);
-//
-//            if (set1.size() != set2.size()) {
-//                System.out.format("%b s1.size: %d s2.size: %d\n",
-//                        set1.equals(set2),
-//                        set1.size(),
-//                        set2.size());
-//                System.out.println(line);
-//            }
-
             validkeycounter += 1;
 
         } catch (Exception e) {
             // Discard ill-formatted pages.
-//            System.out.println(html);
-//            e.printStackTrace();
             return "";
         }
 
@@ -116,7 +98,7 @@ public class Bz2WikiParser {
         return pageName;
     }
 
-    public static XMLReader createParser(List<String> linkPageNames) throws SAXException, ParserConfigurationException {
+    public static XMLReader createParser(Set<String> linkPageNames) throws SAXException, ParserConfigurationException {
         // Configure parser.
         SAXParserFactory spf = SAXParserFactory.newInstance();
         spf.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
@@ -129,11 +111,11 @@ public class Bz2WikiParser {
     /** Parses a Wikipage, finding links inside bodyContent div element. */
     private static class WikiParser extends DefaultHandler {
         /** List of linked pages; filled by parser. */
-        private List<String> linkPageNames;
+        private Set<String> linkPageNames;
         /** Nesting depth inside bodyContent div element. */
         private int count = 0;
 
-        public WikiParser(List<String> linkPageNames) {
+        public WikiParser(Set<String> linkPageNames) {
             super();
             this.linkPageNames = linkPageNames;
         }

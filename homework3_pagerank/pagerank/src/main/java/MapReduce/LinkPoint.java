@@ -13,23 +13,19 @@ public class LinkPoint implements WritableComparable<LinkPoint>{
 
     private String lineName;
     private double weight;
-//    private double change;
 
     public LinkPoint(LinkPoint p) {
         this.lineName = p.getLineName();
-//        this.change = p.getChange();
         this.weight = p.getWeight();
     }
 
     public LinkPoint() {
         this.weight = 0;
-//        this.change = 0;
     }
 
     public LinkPoint(String name, double w, double c) {
         this.lineName = name;
         this.weight = w;
-//        this.change = c;
     }
 
     public String getLineName() {
@@ -48,11 +44,6 @@ public class LinkPoint implements WritableComparable<LinkPoint>{
         this.weight = weight;
     }
 
-//    public double getChange() {
-//        return change;
-//    }
-
-
     @Override
     protected Object clone() throws CloneNotSupportedException {
         return super.clone();
@@ -62,7 +53,6 @@ public class LinkPoint implements WritableComparable<LinkPoint>{
     public int hashCode() {
         int result = this.getLineName().hashCode();
         result = 31 * result + Double.hashCode(this.getWeight());
-//        result = 31 * result + Double.hashCode(this.getChange());
         return result;
     }
 
@@ -81,23 +71,18 @@ public class LinkPoint implements WritableComparable<LinkPoint>{
     public void write(DataOutput out) throws IOException {
         out.writeUTF(lineName);
         out.writeDouble(weight);
-//        out.writeDouble(change);
     }
 
     @Override
     public void readFields(DataInput in) throws IOException {
         lineName = in.readUTF();
         weight = in.readDouble();
-//        change = in.readDouble();
     }
 
     @Override
     public int compareTo(LinkPoint o) {
-//            (x < y) ? -1 : ((x == y) ? 0 : 1);
         if (this.getWeight() != o.getWeight()) {
             return (this.getWeight() < o.getWeight()) ? -1 : 1;
-//        } else if (this.getChange() != o.getChange()) {
-//            return (this.getChange() < o.getChange()) ? -1 : 1;
         } else {
             return this.getLineName().compareTo(o.getLineName());
         }
@@ -105,6 +90,5 @@ public class LinkPoint implements WritableComparable<LinkPoint>{
 
     public void clear() {
         this.weight = 0;
-//        this.change = 0;
     }
 }

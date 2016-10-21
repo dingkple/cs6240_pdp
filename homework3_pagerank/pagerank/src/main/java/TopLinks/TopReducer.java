@@ -22,6 +22,14 @@ public class TopReducer extends Reducer<DoubleWritable, Text, Text, Text> {
         limit = Config.TOP_NUMBER;
     }
 
+    /**
+     * Write the first 100
+     * @param key
+     * @param values
+     * @param context
+     * @throws IOException
+     * @throws InterruptedException
+     */
     @Override
     protected void reduce(DoubleWritable key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
         for (Text name : values) {

@@ -5,16 +5,12 @@ import TopLinks.DescendingKeyComparator;
 import TopLinks.TopMapper;
 import TopLinks.TopReducer;
 import org.apache.hadoop.conf.Configuration;
-
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Counter;
 import org.apache.hadoop.mapreduce.Job;
-
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
-
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
@@ -31,9 +27,11 @@ public class RunPagerank {
 
     public static Path lastOutput;
 
+
+    // Global counter for number of records and number of sink
     public static enum UpdateCounter{
         NUMBER_OF_RECORD,
-        NUMBER_OF_SINK
+        NUMBER_OF_DANGLING
     }
 
     public static void main(String[] args) throws Exception {
@@ -41,45 +39,61 @@ public class RunPagerank {
         String[] otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
 
         Path input;
-        if(otherArgs.length > 0) {
+        Path output;
+
+        // If output is a URI, like hdfs:// or s3://, save it to conf
+        // or if it's a local path, save it to conf too.
+        if(otherArgs.length > 1) {
             input = new Path(otherArgs[0]);
+            String op = otherArgs[1];
+            if (op.startsWith("hdfs") || op.startsWith("s3")) {
+                conf.set(Config.URI_ROOT, op);
+            }
+            conf.set(Config.FINAL_OUTPUT, op);
+        } else if (otherArgs.length > 0) {
+            input = new Path(otherArgs[0]);
+            conf.set(Config.FINAL_OUTPUT, "output");
         } else {
             input = new Path("data");
+            conf.set(Config.FINAL_OUTPUT, "output");
         }
 
+        output = getOutputPathByIterNum(0);
+
+
+        // Pre-processing file, translate them to adjacent lists
         long startTime = System.nanoTime();
-
-        prepareOutputPath(conf);
-
-
-        Path output = getOutputPath(0);
-
-        prepareOutputPath(conf);
-
-
+        checkPath(conf);
         readAndIterate(conf, input, output);
-
-
         long prePareTime = System.nanoTime();
 
-        lastOutput = iteratePagerankNew(conf);
-
+        // Iteration of pagerank
+        lastOutput = iteratePagerank(conf);
         long iterationTime = System.nanoTime();
 
+        // Output top 100 links
         if (lastOutput != null) {
-            showTop(conf, lastOutput, new Path("top_link_new"));
+            showTop(conf, lastOutput, getFinalOutputPathByKey(conf, Config.TOP_100_PATH));
         }
-
         long getTopTime = System.nanoTime();
 
+        // Output time used for each process
         printTime(conf, startTime, prePareTime, iterationTime, getTopTime);
+    }
 
-//        showTopForAll(conf);
+    private static void checkPath(Configuration conf) throws IOException {
+        Utils.prepareOutputPath(conf);
+        getFinalOutputPathByKey(conf, Config.TOP_100_PATH);
+        getFinalOutputPathByKey(conf, Config.TIME_USED_KEY);
     }
 
 
-
-    private static void printTime(Configuration conf, long startTime, long prePareTime, long iterationTime, long getTopTime) throws IOException {
+    private static void printTime(
+            Configuration conf,
+            long startTime,
+            long prePareTime,
+            long iterationTime,
+            long getTopTime) throws IOException {
         String value = String.format(
                 "Time used for preparing: %.2f\n Time used for iteration: %.2f\n" +
                         "Time used for Top 100: %.2f\n",
@@ -88,54 +102,34 @@ public class RunPagerank {
                 getTimeUsed(prePareTime, iterationTime),
                 getTimeUsed(iterationTime, getTopTime)
         );
-
-        Utils.writeData(Config.TIME_USED_KEY, value, conf);
+        Utils.writeStringToFinalPath(value, getFinalOutputPathByKey(conf, Config.TIME_USED_KEY), conf);
     }
 
     private static double getTimeUsed(long t1, long t2) {
         return (t2 - t1) / 1000000000.;
     }
 
-    private static void prepareOutputPath(Configuration conf) throws IOException {
-
-        FileSystem fs = FileSystem.get(conf);
-        Path outputRoot = new Path(Config.outputPathRoot);
-        if (!fs.exists(outputRoot)) {
-            fs.mkdirs(outputRoot);
-        }
-    }
-
-    private static void showTopForAll(Configuration conf) throws Exception {
-        for (int i = 0; i < Config.iterationNumber; i++) {
-            showTop(conf, new Path("output_2_new_" + i), new Path("top_links_new_" + i));
-        }
-    }
-
-
-
 
     private static void showTop(Configuration conf, Path input, Path output) throws Exception {
         Job job = Job.getInstance(conf, "show_Top");
 
         job.setJarByClass(RunPagerank.class);
+        job.setMapperClass(TopMapper.class);
+        job.setReducerClass(TopReducer.class);
+        job.setSortComparatorClass(DescendingKeyComparator.class);
+        job.setNumReduceTasks(1);
 
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
         job.setMapOutputKeyClass(DoubleWritable.class);
         job.setMapOutputValueClass(Text.class);
 
-        job.setMapperClass(TopMapper.class);
-        job.setReducerClass(TopReducer.class);
-        job.setNumReduceTasks(1);
-
         job.setInputFormatClass(SequenceFileInputFormat.class);
         job.setOutputFormatClass(TextOutputFormat.class);
-        job.setSortComparatorClass(DescendingKeyComparator.class);
 
         FileInputFormat.addInputPath(job, input);
         FileInputFormat.setInputDirRecursive(job, true);
 
-        Utils.CheckOutputPath(conf, output);
         FileOutputFormat.setOutputPath(job, output);
 
         boolean ok = job.waitForCompletion(true);
@@ -150,7 +144,6 @@ public class RunPagerank {
         Job job = Job.getInstance(conf, "read input");
 
         job.setJarByClass(RunPagerank.class);
-
         job.setMapperClass(PrepareMapper.class);
         job.setNumReduceTasks(0);
 
@@ -170,59 +163,70 @@ public class RunPagerank {
             throw new Exception("Job failed");
         }
 
+        // Save number of links and number of DANGLING_NAME links
         Counter numberOfRec = job.getCounters().findCounter(UpdateCounter.NUMBER_OF_RECORD);
-        Counter numberOfSink = job.getCounters().findCounter(UpdateCounter.NUMBER_OF_SINK);
+        Counter numberOfSink = job.getCounters().findCounter(UpdateCounter.NUMBER_OF_DANGLING);
 
         conf.set(Utils.numberOfRecords, String.valueOf(numberOfRec.getValue()));
-        conf.set(Utils.numberOfSink, String.valueOf(numberOfSink.getValue()));
+        conf.set(Utils.numberOfDangling, String.valueOf(numberOfSink.getValue()));
 
-        Utils.writeData(Utils.numberOfSink, String.valueOf(numberOfSink.getValue()), conf);
+        Utils.writeData(Utils.numberOfDangling, String.valueOf(numberOfSink.getValue()), conf);
     }
 
-    private static Path iteratePagerankNew(Configuration conf) throws Exception {
+    private static Path iteratePagerank(Configuration conf) throws Exception {
 
         Path last = null;
 
         for (int i = 1; i < Config.iterationNumber + 1; i++) {
             conf.set(Config.ITER_NUM, String.valueOf(i));
 
-            Job job1 = Job.getInstance(conf, "iter1");
+            Job job = Job.getInstance(conf, "iter1");
 
-            job1.setMapOutputKeyClass(LinkPoint.class);
-            job1.setMapOutputValueClass(CombineWritable.class);
-            job1.setOutputKeyClass(LinkPoint.class);
-            job1.setOutputValueClass(LinkPointArrayWritable.class);
+            job.setMapOutputKeyClass(LinkPoint.class);
+            job.setMapOutputValueClass(CombineWritable.class);
+            job.setOutputKeyClass(LinkPoint.class);
+            job.setOutputValueClass(LinkPointArrayWritable.class);
 
-            job1.setJarByClass(RunPagerank.class);
+            job.setJarByClass(RunPagerank.class);
 
-            job1.setMapperClass(IterateMapper.class);
-            job1.setReducerClass(IterateReducer.class);
-            job1.setInputFormatClass(SequenceFileInputFormat.class);
+            job.setMapperClass(IterateMapper.class);
+            job.setReducerClass(IterateReducer.class);
+            job.setPartitionerClass(IteratePartitioner.class);
 
-            job1.setOutputFormatClass(SequenceFileOutputFormat.class);
+            job.setInputFormatClass(SequenceFileInputFormat.class);
+            job.setOutputFormatClass(SequenceFileOutputFormat.class);
 
-            Path input = getOutputPath((i+1) % 2);
-            FileInputFormat.addInputPath(job1, input);
-            FileInputFormat.setInputDirRecursive(job1, true);
+            Path input = getOutputPathByIterNum((i+1) % 2);
+            FileInputFormat.addInputPath(job, input);
+            FileInputFormat.setInputDirRecursive(job, true);
 
-            Path output = getOutputPath(i % 2);
+            if (i > 1) {
+                job.addCacheFile(Utils.getPathInTemp(Utils.totalDanglingWeight).toUri());
+            }
+
+            Path output = getOutputPathByIterNum(i % 2);
             Utils.CheckOutputPath(conf, output);
-            FileOutputFormat.setOutputPath(job1, output);
+            FileOutputFormat.setOutputPath(job, output);
 
             last = output;
 
-            boolean ok1 = job1.waitForCompletion(true);
+            boolean ok1 = job.waitForCompletion(true);
             if (!ok1) {
                 throw new Exception("Job failed");
             }
         }
         return last;
-
     }
 
-    private static Path getOutputPath(int i) {
-        return new Path(Config.outputPathRoot + "/output_" + i);
+    private static Path getOutputPathByIterNum(int i) {
+        return Utils.getPathInTemp(Config.OUTPUT_ROOT_PATH + "/output_" + i);
     }
 
-
+    private static Path getFinalOutputPathByKey(Configuration conf, String key) throws IOException {
+        Path path = new Path(conf.get(Config.FINAL_OUTPUT));
+        Utils.ensureFinalPath(conf, path, false);
+        Path newPath = new Path(conf.get(Config.FINAL_OUTPUT) + "/" + key);
+        Utils.CheckFinalOutputPath(conf, newPath);
+        return newPath;
+    }
 }

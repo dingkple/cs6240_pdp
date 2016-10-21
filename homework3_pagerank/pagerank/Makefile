@@ -8,10 +8,10 @@ $(DIR).jar: build.gradle Makefile
 	zip -d $(DIR).jar /META-INF/LICENSE
 
 run: $(DIR).jar clean-output
-	hadoop jar $(DIR).jar data
+	hadoop jar $(DIR).jar data hdfs://localhost:9000/user/kingkz/output4
 
 clean-output:
-	rm -rf data? dbrata?? output
+	rm -rf output temp top_link_new
 
 clean: clean-output
 	rm -rf build bin *.jar .gradle test.log

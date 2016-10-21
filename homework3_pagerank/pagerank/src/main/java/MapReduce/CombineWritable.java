@@ -10,9 +10,13 @@ import java.util.ArrayList;
 /**
  * Created by kingkz on 10/18/16.
  */
-public class CombineWritable implements Writable {
-    LinkPointArrayWritable pointList;
 
+
+public class CombineWritable implements Writable {
+
+    // PolintList is the outlinks of a link
+    // Diff is the pagerank change in a random surfer, link -> outlink
+    LinkPointArrayWritable pointList;
     double diff;
 
     public CombineWritable() {
@@ -37,8 +41,6 @@ public class CombineWritable implements Writable {
         }
         this.pointList = new LinkPointArrayWritable(listNew);
     }
-
-
 
     @Override
     public void write(DataOutput out) throws IOException {
