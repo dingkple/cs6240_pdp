@@ -145,8 +145,10 @@ public class RunPagerank {
 
         job.setJarByClass(RunPagerank.class);
         job.setMapperClass(PrepareMapper.class);
-        job.setNumReduceTasks(0);
+        job.setReducerClass(PrepareReducer.class);
 
+        job.setMapOutputKeyClass(LinkPoint.class);
+        job.setMapOutputValueClass(LinkPointArrayWritable.class);
         job.setOutputKeyClass(LinkPoint.class);
         job.setOutputValueClass(LinkPointArrayWritable.class);
 
