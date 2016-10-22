@@ -17,7 +17,6 @@ import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
-import org.apache.commons.configuration.SystemConfiguration;
 import org.xml.sax.*;
 import org.xml.sax.helpers.DefaultHandler;
 
@@ -48,7 +47,6 @@ public class Bz2WikiParser {
                 System.exit(1);
             }
 
-
             long start = System.nanoTime();
             Set<String> linkPageNames = new HashSet<>();
             // Parser fills this list with linked page names.
@@ -60,7 +58,6 @@ public class Bz2WikiParser {
             while ((line = reader.readLine()) != null) {
                 // Each line formatted as (Wiki-page-name:Wiki-page-html).
                 processLine(line, xmlReader, linkPageNames);
-
             }
 
             long end = System.nanoTime();

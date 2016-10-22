@@ -22,10 +22,10 @@ import static Parser.Bz2WikiParser.processLine;
  */
 public class PrepareMapper extends Mapper<LongWritable, Text, LinkPoint, LinkPointArrayWritable> {
 
-    XMLReader xmlReader;
-    Set<String> linkPageNames;
-    HashSet<String> nameSet;
-    HashSet<String> nameSet2;
+    private XMLReader xmlReader;
+    private Set<String> linkPageNames;
+    private HashSet<String> nameSet;
+    private HashSet<String> nameSet2;
     private List<LinkPoint> outlinkList;
     private LinkPoint modelLink;
 
@@ -60,9 +60,7 @@ public class PrepareMapper extends Mapper<LongWritable, Text, LinkPoint, LinkPoi
                 modelLink.setLineName(pageName);
                 modelLink.clear();
 
-                // Number of links += 1
                 nameSet.add(pageName);
-                context.getCounter(RunPagerank.UpdateCounter.NUMBER_OF_RECORD).increment(1);
 
                 outlinkList.clear();
                 if (linkPageNames.size() > 0) {

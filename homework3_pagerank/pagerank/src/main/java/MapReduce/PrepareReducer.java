@@ -16,10 +16,13 @@ public class PrepareReducer extends Reducer<LinkPoint, LinkPointArrayWritable, L
     private Counter danglingCounter;
     private Counter linkCounter;
 
+    private LinkPointArrayWritable emptyOutlinks;
+
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
         danglingCounter = context.getCounter(RunPagerank.UpdateCounter.NUMBER_OF_DANGLING);
         linkCounter = context.getCounter(RunPagerank.UpdateCounter.NUMBER_OF_RECORD);
+        emptyOutlinks = new LinkPointArrayWritable();
     }
 
     @Override
@@ -35,6 +38,7 @@ public class PrepareReducer extends Reducer<LinkPoint, LinkPointArrayWritable, L
 
         if (outlinks.size() == 0) {
             danglingCounter.increment(1);
+            context.write(key, emptyOutlinks);
         } else {
             context.write(key, new LinkPointArrayWritable(outlinks));
         }
