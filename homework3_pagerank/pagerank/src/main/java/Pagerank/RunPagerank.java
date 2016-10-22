@@ -202,7 +202,7 @@ public class RunPagerank {
             FileInputFormat.addInputPath(job, input);
             FileInputFormat.setInputDirRecursive(job, true);
 
-            if (i > 1) {
+            if (i > 1 && conf.get(Config.URI_ROOT) != null) {
                 job.addCacheFile(Utils.getPathInTemp(Utils.totalDanglingWeight).toUri());
             }
 

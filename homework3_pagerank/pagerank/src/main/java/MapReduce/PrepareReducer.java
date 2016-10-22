@@ -15,6 +15,7 @@ public class PrepareReducer extends Reducer<LinkPoint, LinkPointArrayWritable, L
 
     private Counter danglingCounter;
     private Counter linkCounter;
+    HashSet<LinkPoint> outlinks;
 
     private LinkPointArrayWritable emptyOutlinks;
 
@@ -27,20 +28,16 @@ public class PrepareReducer extends Reducer<LinkPoint, LinkPointArrayWritable, L
 
     @Override
     protected void reduce(LinkPoint key, Iterable<LinkPointArrayWritable> values, Context context) throws IOException, InterruptedException {
-        HashSet<LinkPoint> outlinks = new HashSet<>();
+        outlinks = new HashSet<>();
 
         linkCounter.increment(1);
         for (LinkPointArrayWritable w : values) {
-            for (Writable o : w.get()) {
-                outlinks.add(new LinkPoint((LinkPoint)o));
+            if (w.get().length > 0) {
+                context.write(key, w);
+                return;
             }
         }
-
-        if (outlinks.size() == 0) {
-            danglingCounter.increment(1);
-            context.write(key, emptyOutlinks);
-        } else {
-            context.write(key, new LinkPointArrayWritable(outlinks));
-        }
+        danglingCounter.increment(1);
+        context.write(key, emptyOutlinks);
     }
 }

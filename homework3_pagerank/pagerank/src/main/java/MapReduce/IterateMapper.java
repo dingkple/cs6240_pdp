@@ -73,19 +73,25 @@ public class IterateMapper extends Mapper<LinkPoint, LinkPointArrayWritable, Lin
     private double readDanglingWeight(Context ctx) throws IOException {
         URI[] uriArray = ctx.getCacheFiles();
 
-        for (URI uri : uriArray) {
-            if (!uri.getPath().contains(Utils.totalDanglingWeight))
-                continue;
-
-            Path path = new Path(uri.getPath());
-            FileSystem fs = FileSystem.get(ctx.getConfiguration());
-
-            FSDataInputStream fin = fs.open(path);
-            String line = fin.readUTF();
-            String[] data = line.split("=");
-            return Double.valueOf(data[1]);
+        Path path = null;
+        if (uriArray != null) {
+            for (URI uri : uriArray) {
+                if (uri.getPath().contains(Utils.totalDanglingWeight)) {
+                    path = new Path(uri.getPath());
+                    break;
+                }
+            }
         }
-        return 0;
+
+        if (path == null) {
+            return Double.valueOf(Utils.readData(Utils.totalDanglingWeight, ctx.getConfiguration()));
+        }
+
+        FileSystem fs = FileSystem.get(ctx.getConfiguration());
+        FSDataInputStream fin = fs.open(path);
+        String line = fin.readUTF();
+        String[] data = line.split("=");
+        return Double.valueOf(data[1]);
     }
 
     /**
