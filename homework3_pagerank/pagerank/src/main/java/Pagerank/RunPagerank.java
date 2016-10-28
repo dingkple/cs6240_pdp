@@ -167,12 +167,8 @@ public class RunPagerank {
 
         // Save number of links and number of DANGLING_NAME links
         Counter numberOfRec = job.getCounters().findCounter(UpdateCounter.NUMBER_OF_RECORD);
-        Counter numberOfSink = job.getCounters().findCounter(UpdateCounter.NUMBER_OF_DANGLING);
 
         conf.set(Utils.numberOfRecords, String.valueOf(numberOfRec.getValue()));
-        conf.set(Utils.numberOfDangling, String.valueOf(numberOfSink.getValue()));
-
-        Utils.writeData(Utils.numberOfDangling, String.valueOf(numberOfSink.getValue()), conf);
     }
 
     private static Path iteratePagerank(Configuration conf) throws Exception {

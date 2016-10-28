@@ -30,7 +30,7 @@ public class TopMapper extends Mapper<LinkPoint, LinkPointArrayWritable, DoubleW
 
     /**
      * Read the key/value pairs from last iteration, and calculate the real pagerank, then put them in a treeMap, which
-     * discards the smallest pagerank list when its size exceed the limit
+     * discards the smallest pagerank link when its size exceeds the limit
      * @param key A linkPoint
      * @param value Its outlinks, not used here
      * @param context Context of mapper

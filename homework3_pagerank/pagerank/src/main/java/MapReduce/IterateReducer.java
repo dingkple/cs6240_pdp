@@ -52,7 +52,7 @@ public class IterateReducer extends Reducer<LinkPoint, CombineWritable, LinkPoin
                     context.getConfiguration());
         } else {
 
-            // Sum pagerank weights
+            // Set pagerank weights
             key.setWeight(weightSum);
             if (node == null) {
                 node = new LinkPointArrayWritable();

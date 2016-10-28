@@ -31,7 +31,7 @@ public class IterateMapper extends Mapper<LinkPoint, LinkPointArrayWritable, Lin
 
 
     private Long numberOfLinks;
-    private Long numberOfDanglingLinks;
+
 
     // Sum of dummyDanglingLink weights in this mapper
     private double currentDangling;
@@ -44,16 +44,13 @@ public class IterateMapper extends Mapper<LinkPoint, LinkPointArrayWritable, Lin
         iterNumber = Integer.valueOf(context.getConfiguration().get(Config.ITER_NUM));
 
         numberOfLinks = Long.valueOf(context.getConfiguration().get(Utils.numberOfRecords));
-        numberOfDanglingLinks = Long.valueOf(context.getConfiguration().get(Utils.numberOfDangling));
 
         // initial pagerank
         oriWeight = 1./ numberOfLinks;
 
         // If this is the first iteration, DANGLING_NAME links' page rank = numberOfDangling * initial weight
         // If not, read from the cached file written by reducer of last iteration
-        if (iterNumber == 1) {
-            totalDanglingPagerank = oriWeight * numberOfDanglingLinks;
-        } else {
+        if (iterNumber > 1) {
             totalDanglingPagerank = readDanglingWeight(context);
         }
 
