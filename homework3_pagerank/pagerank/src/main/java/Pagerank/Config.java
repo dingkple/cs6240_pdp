@@ -24,4 +24,6 @@ public class Config {
     public static final String URI_ROOT = "uri_root";
     public static final String TEMP_ROOT = "temp";
     public static final String FINAL_OUTPUT = "final_output";
+    public static final String NON_DANGLE = "non_dangle";
+    public static String NEW_TOTAL_WEIGHT = "new_total_weight";
 }

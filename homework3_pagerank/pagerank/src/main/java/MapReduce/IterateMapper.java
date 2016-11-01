@@ -38,6 +38,10 @@ public class IterateMapper extends Mapper<LinkPoint, LinkPointArrayWritable, Lin
 
     // Number of iteration
     private int iterNumber;
+    private double newTotalWeight;
+    private double sump2;
+    private double sump1;
+    private double sumkeyweight;
 
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
@@ -57,6 +61,10 @@ public class IterateMapper extends Mapper<LinkPoint, LinkPointArrayWritable, Lin
         dummyDanglingLink = new LinkPoint(Config.DANGLING_NAME, 0, 0);
         dummyEntropy = new LinkPoint(Config.ENTROPY_NAME, 0, 0);
         currentDangling = 0;
+        newTotalWeight = 0;
+        sump1 = 0;
+        sump2 = 0;
+        sumkeyweight = 0;
     }
 
 
@@ -114,10 +122,16 @@ public class IterateMapper extends Mapper<LinkPoint, LinkPointArrayWritable, Lin
             //calculate real pagerank here, it's the actual pagerank we should use in this iteration
             double alpha = Config.PAGERANK_D;
             keyWeight = key.getWeight();
+            sumkeyweight += keyWeight;
+
+
             double p1 = alpha * (keyWeight + totalDanglingPagerank / numberOfLinks);
             double p2 = (1 - alpha) / numberOfLinks;
             keyWeight = p1 + p2;
+            sump1 += p1;
+            sump2 += p2;
         }
+        newTotalWeight += keyWeight;
 
         entropy += keyWeight * Math.log(keyWeight) / Math.log(2);
 
@@ -151,5 +165,21 @@ public class IterateMapper extends Mapper<LinkPoint, LinkPointArrayWritable, Lin
     protected void cleanup(Context context) throws IOException, InterruptedException {
         context.write(dummyEntropy, new CombineWritable(entropy));
         context.write(dummyDanglingLink, new CombineWritable(currentDangling));
+        Utils.writeData(
+                Config.NEW_TOTAL_WEIGHT + "_" + iterNumber,
+                String.valueOf(newTotalWeight),
+                context.getConfiguration());
+        Utils.writeData(
+                "sump1" + "_" + iterNumber,
+                String.valueOf(sump1),
+                context.getConfiguration());
+        Utils.writeData(
+                "sump2" + "_" + iterNumber,
+                String.valueOf(sump2),
+                context.getConfiguration());
+        Utils.writeData(
+                "sumkeyweight" + "_" + iterNumber,
+                String.valueOf(sumkeyweight),
+                context.getConfiguration());
     }
 }

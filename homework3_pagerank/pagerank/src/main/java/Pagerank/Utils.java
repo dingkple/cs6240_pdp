@@ -67,7 +67,7 @@ public class Utils {
     }
 
     public static Path getPathInTemp(String key) {
-        return new Path(Config.TEMP_ROOT+ "/" + key);
+        return new Path(Config.TEMP_ROOT+ "/" + key + ".txt");
     }
 
 

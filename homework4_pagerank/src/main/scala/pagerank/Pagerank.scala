@@ -72,6 +72,7 @@ object Pagerank {
         val linkNum = sc.longAccumulator("number of links")
         val danglingPagerank = sc.doubleAccumulator("weight of dangling")
         val totalWeight = sc.doubleAccumulator("total weight")
+        val ct = sc.longAccumulator("counter")
 
         val allInputs = getListOfFiles(args(0))
         println(allInputs)
@@ -97,15 +98,19 @@ object Pagerank {
         val broadcastLinkNum = sc.broadcast(setSize)
         var iteration:RDD[MyData] = allOutLinks
         for (iter <- 1 to 10) {
-            val broadcastDangling = sc.broadcast(danglingPagerank.value)
-            val broadcastTotal = sc.broadcast(totalWeight.value)
+//            val broadcastDangling = sc.broadcast(danglingPagerank.value)
+//            val broadcastTotal = sc.broadcast(totalWeight.value)
+            val broadcastDangling = sc.broadcast(1.0 - totalWeight.value)
+            val dvalue = broadcastDangling.value;
+//            val tvalue = broadcastTotal.value;
             println("weight: " + totalWeight.value + " "
                 + (1 - totalWeight.value) + " " + broadcastLinkNum.value + " "
-                + broadcastDangling.value + " " + (broadcastDangling.value + broadcastTotal.value)
+                + broadcastDangling.value + " " + broadcastDangling.value
                 + setSize)
             danglingPagerank.reset()
             totalWeight.reset()
             iteration = iteration.flatMap(rec => {
+//                ct.add(1)
                 if (iter == 1) {
                     val weight = 1.0 / broadcastLinkNum.value
                     var data: ListBuffer[MyData] = new ListBuffer[MyData]()
@@ -113,41 +118,43 @@ object Pagerank {
                         for (ol <- rec.outlinks) {
                             data += MyData(ol, weight/rec.outlinks.size, Set[String]())
                         }
-                    } else {
-                        data += MyData("~", weight, Set[String]())
+//                    } else {
+//                        data += MyData("~", weight, Set[String]())
                     }
                     data += MyData(rec.linkName, 0, rec.outlinks)
                     data
                 } else {
-                    val dangling = 1 - broadcastTotal.value
+                    val dangling = broadcastDangling.value
                     val number = broadcastLinkNum.value
-                    val alpha = 0.85
-                    val weight:Double = alpha/number + (1-alpha) * (dangling/number + rec.pagerank) * alpha
+                    val alpha = 0.15
+                    val weight:Double = alpha/number + (1-alpha) * (dangling/number + rec.pagerank)
                     var data: ListBuffer[MyData] = new ListBuffer[MyData]()
                     if (rec.outlinks.nonEmpty) {
                         for (ol <- rec.outlinks) {
                             data += MyData(ol, weight/rec.outlinks.size, Set[String]())
                         }
-                    } else {
-                        data += MyData("~", weight, Set[String]())
+//                    } else {
+//                        data += MyData("~", weight, Set[String]())
                     }
                     data += MyData(rec.linkName, 0, rec.outlinks)
                     data
                 }
-            })
-                .keyBy(_.linkName).reduceByKey((a, b) => {
+            }).keyBy(_.linkName).reduceByKey((a, b) => {
                 MyData(a.linkName, a.pagerank+b.pagerank, a.outlinks.union(b.outlinks))
-
-            })
-                .map(rec => {
+            }).map(rec => {
                     rec._2
                 })
+
             iteration.foreach(x => {
-                if (!x.linkName.equals("~") && x.outlinks.nonEmpty) {
+//                if (!x.linkName.equals("~") && x.outlinks.nonEmpty) {
+//                    totalWeight.add(x.pagerank)
+//                } else {
+//                    danglingPagerank.add(x.pagerank)
+//                }
+                if (x.outlinks.nonEmpty) {
                     totalWeight.add(x.pagerank)
-                } else {
-                    danglingPagerank.add(x.pagerank)
                 }
+
             })
         }
 
@@ -156,13 +163,14 @@ object Pagerank {
             {
                 val dangling = 1 - lastTotal.value
                 val number = broadcastLinkNum.value
-                val alpha = 0.85
-                val weight:Double = alpha/number + (1-alpha) * (dangling/number + rec.pagerank) * alpha
+                val alpha = 0.15
+                val weight:Double = alpha/number + (1-alpha) * (dangling/number + rec.pagerank)
                 (weight, rec.linkName)
             }
         ).takeOrdered(100)(Ordering[Double].reverse.on(_._1))
 
         sc.makeRDD(result).repartition(1).saveAsTextFile("output")
 
+        println("total calculated: " + ct.value)
     }
 }
