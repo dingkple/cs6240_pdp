@@ -23,7 +23,7 @@ object Test {
 
         val rand = new Random()
 
-        var ct = sc.longAccumulator("test")
+//        var ct = sc.accumulator("test")
 
         var nm:RDD[(Double, Double)] = nums.map(num => (num, 1.))
 
@@ -38,7 +38,7 @@ object Test {
             nm = nm.map(num => {
                 println("MAP CALL IN ITERATION - " + ii)
                 Console.println("In map now: " + ii)
-                ct.add(1)
+//                ct.add(1)
 
                 if (rand.nextBoolean) {
                     (num._1, average + ii)
@@ -53,13 +53,9 @@ object Test {
 
         nm.foreach(println)
 
-        println("counter1: " + ct.value)
-
         println("ADD 1")
 
-        nm.foreach(num => {ct.add(1)})
 
-        println("counter2: " + ct.value)
 
 
     }
