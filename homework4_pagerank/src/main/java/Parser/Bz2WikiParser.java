@@ -19,16 +19,11 @@ import java.util.regex.Pattern;
 
 /** Decompresses bz2 file and parses Wikipages on each line. */
 public class Bz2WikiParser {
-    private static Pattern namePattern;
     private static Pattern linkPattern;
-    static int validkeycounter = 0;
 
     static {
-        // Keep only html pages not containing tilde (~).
-        namePattern = Pattern.compile("^([^~]+)$");
         // Keep only html filenames ending relative paths and not containing tilde (~).
         linkPattern = Pattern.compile("^\\..*/([^~]+)\\.html$");
-
     }
 
     private final SAXParserFactory spf;
@@ -78,7 +73,7 @@ public class Bz2WikiParser {
 //        }
     }
 
-    public List<String> processLine(String pagename, String line) throws ParserConfigurationException, SAXException {
+    public List<String> processLine(String pageName, String line) throws ParserConfigurationException, SAXException {
 //        int delimLoc = line.indexOf(':');
 //        if (delimLoc <= 0) {
 //            return null;
@@ -98,7 +93,7 @@ public class Bz2WikiParser {
             XMLReader parser = createParser(links);
             rst = new ArrayList<>();
             parser.parse(new InputSource(new StringReader(line)));
-            links.remove(pagename);
+            links.remove(pageName);
             rst.addAll(links);
 
         } catch (Exception e) {

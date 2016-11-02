@@ -3,15 +3,11 @@ package pagerank
 /**
   * Created by kingkz on 10/28/16.
   */
-import java.io.File
-import java.nio.file.{Files, Paths}
 
-import org.apache.hadoop.fs.{FileUtil, Path}
+import org.apache.hadoop.fs.{Path}
 import org.apache.spark.{SparkConf, SparkContext}
-import org.jsoup.Jsoup
 
 import scala.collection.JavaConversions._
-import java.net.URLDecoder
 import java.util.regex.Pattern
 
 import Parser.Bz2WikiParser
@@ -80,7 +76,6 @@ object Pagerank {
             conf.setMaster("local[*]");
         }
 
-        conf.setExecutorEnv("spark.executor.cores", "1")
         val sc = new SparkContext(conf)
 
         val outputPath = new Path(output)
@@ -92,7 +87,7 @@ object Pagerank {
             .map(line => line.split(":", 2))
             .filter(line => {
                 val len = line.length == 2
-                val isMatch =namePattern.matcher(line(0)).find()
+                val isMatch = namePattern.matcher(line(0)).find()
                 len && isMatch
             })
             .map(line => (line(0), getAllOutlinks(line(0), line(1))))
@@ -100,13 +95,8 @@ object Pagerank {
             .map(rec => {
                 MyData(rec._1, 0, rec._2)
             })
-//
-//        val k = allOutLinks.map(x=>{
-//            val buff = x.outlinks + x.linkName
-//            buff
-//        }).reduce((x, y) => x.union(y))
+
         val setSize = allOutLinks.count()
-        val danglingPagerank = sc.doubleAccumulator("weight of dangling")
         val totalWeight = sc.doubleAccumulator("total weight")
 
         // TODO: outlinks now accessable, need to calculate the pagerank and broadcast
@@ -115,12 +105,10 @@ object Pagerank {
         var iteration:RDD[MyData] = allOutLinks
         for (iter <- 1 to 10) {
             val broadcastDangling = sc.broadcast(1.0 - totalWeight.value)
-            val dvalue = broadcastDangling.value;
             println("weight: " + totalWeight.value + " "
                 + (1 - totalWeight.value) + " " + broadcastLinkNum.value + " "
                 + broadcastDangling.value + " " + broadcastDangling.value
                 + setSize)
-            danglingPagerank.reset()
             totalWeight.reset()
             iteration = iteration.flatMap(rec => {
                 if (iter == 1) {
@@ -167,8 +155,8 @@ object Pagerank {
                 val weight:Double = alpha/number + (1-alpha) * (dangling/number + rec.pagerank)
                 (weight, rec.linkName)
             }
-        ).takeOrdered(100)(Ordering[Double].reverse.on(_._1))
+        ).repartition(1).takeOrdered(100)(Ordering[Double].reverse.on(_._1))
 
-        sc.makeRDD(result).repartition(1).saveAsTextFile(output)
+        sc.makeRDD(result).saveAsTextFile(output)
     }
 }
