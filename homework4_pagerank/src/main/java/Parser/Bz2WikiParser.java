@@ -1,6 +1,5 @@
 package Parser;
 
-import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.xml.sax.*;
 import org.xml.sax.helpers.DefaultHandler;
 
@@ -102,9 +101,9 @@ public class Bz2WikiParser {
         }
 
 //         Occasionally print the page and its links.
-        if (Math.random() < .01f) {
-            System.out.println(rst.toString());
-        }
+//        if (Math.random() < .01f) {
+//            System.out.println(rst.toString());
+//        }
 
 
         return rst;
