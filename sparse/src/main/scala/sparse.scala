@@ -1,37 +1,17 @@
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
 
-import scala.collection.mutable.ListBuffer
-
 object MmulSparse {
     val on_csv = """\s*,\s*""".r
 
-    def flatten(raw: RDD[String], isRow: Boolean): RDD[(Double, (Seq[(Double,
+    def flatten(raw: RDD[String]): RDD[(Double, (Seq[(Double,
         Double)]))]
     = {
         val rst = raw.map(line => on_csv.split(line))
             .map(line => line.map(v => v.toDouble))
-            .map(rec => {
-                if (isRow) {
-                    (rec(0), Seq[(Double, Double)]((rec(1), rec(2))))
-                } else {
-                    (rec(1), Seq[(Double, Double)]((rec(0), rec(2))))
-                }
-            })
+            .map(rec => (rec(0), Seq[(Double, Double)]((rec(1), rec(2)))))
             .reduceByKey(_ ++ _)
         rst
-//
-//            if (isRow) {
-//                rst.flatMap {
-//                    case (j, data) => {
-//                        data.map(rec => {
-//                            (j, data)
-//                        })
-//                    }
-//                }
-//            } else {
-//                rst
-//            }
     }
 
     def main(args: Array[String]) {
@@ -41,58 +21,42 @@ object MmulSparse {
         val textA = sc.textFile("_test/dataA.csv")
         val textB = sc.textFile("_test/dataB.csv")
 
-        val rowsA = flatten(textA, isRow = true)
-        val rowsB = flatten(textB, isRow = false)
+        val rowsB = flatten(textB)
 
-        //        val textA1 = rowsA.flatMap(rec => {
-        //            rec._2.map(v => {
-        //                ((rec._1, v._1), (1, rec._2))
-        //            })
-        //        })
-        //
-        //        textA1.saveAsTextFile("output/texta1")
-        //
-        //        val textB1 = rowsB.flatMap(rec => {
-        //            rec._2.map(v => {
-        //                ((v._1, rec._1), (2, rec._2))
-        //            })
-        //        })
-        //
-        //        textB1.saveAsTextFile("output/textb1")
-        val textC = rowsA.flatMap{
-            case (i, data) => {
-                data.map( v =>{
-                    (v._1, (i, data))
+        val textC = textA.map(line => on_csv.split(line))
+            .map(line => line.map(v => v.toDouble))
+            .keyBy(rec => rec(1))
+            /*
+            All values in B are needed, so data need to be communicated: |B|
+             */
+            .join(rowsB)
+            .flatMap(
+                /*
+                Basically every cell in A generate a row same len as rowB, so
+                 its called |A| * N (N is the row number of B)
+                 */
+                rec => {
+                val rA = rec._2._1
+                val rB = rec._2._2
+                rB.map(rowB => {
+                    ((rA(0), rB.head._1), rA(2)*rowB._2)
                 })
-            }
-        }.join(rowsB).flatMap{
-            case (col, data) => {
-                val rowdata = data._1._2.toMap
-                val coldata = data._2.toMap
-                val common = rowdata.keySet.intersect(coldata.keySet)
-                var value = 0.0
-                val buf = new ListBuffer[(Int, Int, Double)]()
-                for (c <- common) {
-                    value += rowdata(c) * coldata(c)
-                }
-                buf.append((data._1._1.toInt, col.toInt, value))
-                buf
-            }
-        }.map(rec => {
-            rec._1 + ", " + rec._2 + ", " + rec._3
-        }).sortBy(rec => {
-            rec
-        }
-        , ascending = true, 1)
+            })
+            /*
+            If communicating in reducing part counts too, the amount of data
+            communicated is sum(Ai*Bi) where Ai is the length of col[i] in A
+            and Bi is row[i] in B
+             */
+            .reduceByKey(_+_)
+            .map(rec => {
+                rec._1._1 + ", " + rec._1._2 + ", " + rec._2
+            })
+            .sortBy(rec => rec, ascending = true, 1)
 
+        println("A: " + textA.count() + " B: " + textB.count() + " C: " +
+            textC.count)
 
-        // TODO: calculate C = A * B
-
-        //        val textC =
         textC.saveAsTextFile("output")
-
         sc.stop()
     }
 }
-
-// vim: set ts=4 sw=4 et:
