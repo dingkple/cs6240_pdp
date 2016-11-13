@@ -48,6 +48,7 @@ object MmulSparse {
             and Bi is row[i] in B
              */
             .reduceByKey(_+_)
+            .filter(rec => rec._2 != 0)
             .map(rec => {
                 rec._1._1 + ", " + rec._1._2 + ", " + rec._2
             })
