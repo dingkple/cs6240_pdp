@@ -12,8 +12,8 @@ import java.io.IOException;
 public class GraphKeyWritable implements WritableComparable<GraphKeyWritable> {
 
     private String name;
-    private long type;
-    private long rowcol;
+    private int type;
+    private int rowcol;
 
     public GraphKeyWritable() {
         this.name = "";
@@ -21,19 +21,19 @@ public class GraphKeyWritable implements WritableComparable<GraphKeyWritable> {
         this.rowcol = -1;
     }
 
-    public GraphKeyWritable(long type, String name, long rowcol) {
+    public GraphKeyWritable(int type, String name, int rowcol) {
         this.name = name;
         this.type = type;
         this.rowcol = rowcol;
     }
 
-    public GraphKeyWritable(long type, String name) {
+    public GraphKeyWritable(int type, String name) {
         this.name = name;
         this.type = type;
         this.rowcol = -1;
     }
 
-    public GraphKeyWritable(long type, long rowcol) {
+    public GraphKeyWritable(int type, int rowcol) {
         this.rowcol = rowcol;
         this.type = type;
         this.name = "";
@@ -47,34 +47,34 @@ public class GraphKeyWritable implements WritableComparable<GraphKeyWritable> {
         this.name = name;
     }
 
-    public long getType() {
+    public int getType() {
         return type;
     }
 
-    public void setType(long type) {
+    public void setType(int type) {
         this.type = type;
     }
 
-    public long getRowcol() {
+    public int getRowcol() {
         return rowcol;
     }
 
-    public void setRowcol(long rowcol) {
+    public void setRowcol(int rowcol) {
         this.rowcol = rowcol;
     }
 
     @Override
     public void write(DataOutput out) throws IOException {
         out.writeUTF(name);
-        out.writeLong(type);
-        out.writeLong(rowcol);
+        out.writeInt(type);
+        out.writeInt(rowcol);
     }
 
     @Override
     public void readFields(DataInput in) throws IOException {
         name = in.readUTF();
-        type = in.readLong();
-        rowcol = in.readLong();
+        type = in.readInt();
+        rowcol = in.readInt();
     }
 
     @Override

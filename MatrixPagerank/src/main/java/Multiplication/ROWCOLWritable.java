@@ -13,30 +13,50 @@ import java.io.IOException;
  */
 public class ROWCOLWritable implements Writable {
 
-    private long id;
+    private int id;
     private CellArrayWritable cellArray;
 
-    public ROWCOLWritable(long id, CellArrayWritable cellArray) {
+    public int getId() {
+        return id;
+    }
 
-        this. id = id;
-        CellWritable[] array = new CellWritable[cellArray.get().length];
-        int idx = 0;
-        for (Writable w : cellArray.get()) {
-            CellWritable cell = new CellWritable((CellWritable) w);
-            array[idx++] = cell;
-        }
-        this.cellArray = new CellArrayWritable(array);
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public CellArrayWritable getCellArray() {
+        return cellArray;
+    }
+
+    public void setCellArray(CellArrayWritable cellArray) {
+        this.cellArray = cellArray;
+    }
+
+    public ROWCOLWritable() {
+        this.id = -1;
+        this.cellArray = new CellArrayWritable();
+    }
+
+    public ROWCOLWritable(ROWCOLWritable rowcolWritable) {
+        this.id = rowcolWritable.getId();
+        this.cellArray = new CellArrayWritable(rowcolWritable.getCellArray());
+    }
+
+    public ROWCOLWritable(int id, CellArrayWritable cellArray) {
+
+        this.id = id;
+        this.cellArray = new CellArrayWritable(cellArray);
     }
 
     @Override
     public void write(DataOutput out) throws IOException {
-        out.writeLong(id);
+        out.writeInt(id);
         cellArray.write(out);
     }
 
     @Override
     public void readFields(DataInput in) throws IOException {
-        id = in.readLong();
+        id = in.readInt();
         cellArray.readFields(in);
     }
 }

@@ -2,6 +2,7 @@ package Preprocess;
 
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.Writable;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -21,23 +22,20 @@ public class CellArrayWritable extends ArrayWritable {
 
     public CellArrayWritable() {
         super(CellWritable.class);
-        set(new Text[0]);
+        set(new CellWritable[0]);
     }
 
-
-    private void readIterable(Iterator<String> itr, int size) {
-        Text[] links = new Text[size];
-        int i = 0;
-        while (itr.hasNext()) {
-            Text l = new Text(itr.next());
-            links[i++] = l;
-        }
-        set(links);
-    }
-
-    public CellArrayWritable(Set<String> lpArray) {
+    public CellArrayWritable(CellArrayWritable cellArrayWritable) {
         super(CellWritable.class);
-        readIterable(lpArray.iterator(), lpArray.size());
+        CellWritable[] cells = new CellWritable[cellArrayWritable.get().length];
+        int idx = 0;
+        for (Writable w : cellArrayWritable.get()) {
+            CellWritable temp = (CellWritable) w;
+            CellWritable cellWritable = new CellWritable(temp.getRowcol(),
+                    temp.getValue());
+            cells[idx++] = cellWritable;
+        }
+        set(cells);
     }
 
 }

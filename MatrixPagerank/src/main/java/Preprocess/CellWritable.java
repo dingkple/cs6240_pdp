@@ -12,14 +12,14 @@ import java.io.IOException;
 public class CellWritable implements Writable {
 
 
-    private long rowcol;
+    private int rowcol;
     private double value;
 
-    public long getRowcol() {
+    public int getRowcol() {
         return rowcol;
     }
 
-    public void setRowcol(long rowcol) {
+    public void setRowcol(int rowcol) {
         this.rowcol = rowcol;
     }
 
@@ -31,7 +31,7 @@ public class CellWritable implements Writable {
         this.value = value;
     }
 
-    public CellWritable (long rowcol, double value) {
+    public CellWritable (int rowcol, double value) {
         this.rowcol = rowcol;
         this.value = value;
     }
@@ -48,13 +48,13 @@ public class CellWritable implements Writable {
 
     @Override
     public void write(DataOutput out) throws IOException {
-        out.writeLong(rowcol);
+        out.writeInt(rowcol);
         out.writeDouble(value);
     }
 
     @Override
     public void readFields(DataInput in) throws IOException {
-        rowcol = in.readLong();
+        rowcol = in.readInt();
         value = in.readDouble();
     }
 }
