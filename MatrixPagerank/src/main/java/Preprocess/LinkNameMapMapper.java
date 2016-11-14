@@ -87,11 +87,16 @@ public class LinkNameMapMapper extends Mapper<LongWritable, Text, GraphKeyWritab
     @Override
     protected void cleanup(Context context) throws IOException, InterruptedException {
         for (String name : inlinkMap.keySet()) {
-            context.write(new GraphKeyWritable(PagerankConfig
-                    .INLINK_TYPE, name), new GraphKeyArrayWritable(Iterables
-                    .toArray(inlinkMap
-                    .get
-                    (name), GraphKeyWritable.class)));
+            context.write(
+                    new GraphKeyWritable(
+                            PagerankConfig.INLINK_TYPE, name),
+                    new GraphKeyArrayWritable(
+                                Iterables.toArray(
+                                        inlinkMap.get(name),
+                                        GraphKeyWritable.class
+                                )
+                    )
+            );
 
             context.write(new GraphKeyWritable(PagerankConfig.OUTLINK_TYPE,
                     name), new GraphKeyArrayWritable());

@@ -47,40 +47,35 @@ public class MatricesMapper extends Mapper<IntWritable, Writable,
     @Override
     protected void map(IntWritable key, Writable value,
                        Context context) {
-        try {
-            if (value instanceof CellArrayWritable) {
-                int block_id = key.get() % blockNum;
-                if (block_id < 0) block_id += blockNum;
-                if (!blockMap.containsKey(block_id)) {
-                    blockMap.put(block_id, new ArrayList<>());
+
+        int block_id = key.get() % blockNum;
+        if (block_id < 0) block_id += blockNum;
+        if (!blockMap.containsKey(block_id)) {
+            blockMap.put(block_id, new ArrayList<>());
+        }
+        if (key.get() == PagerankConfig.DANGLING_NAME.hashCode()) {
+            ROWCOLWritable danglingRow = new ROWCOLWritable(
+                    key.get(),
+                    (CellArrayWritable) value
+            );
+
+            if (!isByRow) {
+                for (int i = 0; i < blockNum; i++) {
+                    if (!blockMap.containsKey(i)) {
+                        blockMap.put(i, new ArrayList<>());
+                    }
+                    blockMap.get(i).add(danglingRow);
                 }
-                if (key.get() == PagerankConfig.DANGLING_NAME.hashCode()) {
-                    ROWCOLWritable danglingRow = new ROWCOLWritable(
+            } else {
+                blockMap.get(block_id).add(danglingRow);
+            }
+        } else {
+            blockMap.get(block_id).add(
+                    new ROWCOLWritable(
                             key.get(),
                             (CellArrayWritable) value
-                    );
-
-                    if (!isByRow) {
-                        for (int i = 0; i < blockNum; i++) {
-                            if (!blockMap.containsKey(i)) {
-                                blockMap.put(i, new ArrayList<>());
-                            }
-                            blockMap.get(i).add(danglingRow);
-                        }
-                    } else {
-                        blockMap.get(block_id).add(danglingRow);
-                    }
-                } else {
-                    blockMap.get(block_id).add(
-                            new ROWCOLWritable(
-                                    key.get(),
-                                    (CellArrayWritable) value
-                            )
-                    );
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+                    )
+            );
         }
     }
 
