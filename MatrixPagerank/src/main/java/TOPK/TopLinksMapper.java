@@ -7,6 +7,7 @@ import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Mapper;
 
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.TreeMap;
 
 /**
@@ -34,7 +35,8 @@ public class TopLinksMapper extends Mapper<IntWritable, DoubleWritable,
     @Override
     protected void map(IntWritable key, DoubleWritable value, Context context)
             throws IOException, InterruptedException {
-        topMap.put(value.get() + danglingSum / numberOfLinks, key.get());
+        topMap.put((value.get() + danglingSum / numberOfLinks) * 0.85 + 0.15/numberOfLinks,
+                key.get());
         if (topMap.size() > 100) {
             topMap.remove(topMap.firstKey());
         }

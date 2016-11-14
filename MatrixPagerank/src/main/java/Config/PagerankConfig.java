@@ -23,6 +23,8 @@ public class PagerankConfig {
     public static final String NUMBER_OF_LINKS = "numberoflinks";
     public static final String PAGERANK_COL = "~~";
     public static final String DANGLING_FILENAME = "danglingsum";
+    public static final String EMPTY_INLINKS = "~~~";
+    public static final String PARTITION_BY_ROW = "partitionbyrow";
     public static Long KEY_TYEP_ROW = 1L;
     public static int PR_BLOCK_SIZE = 5000;
     public static Long ROWCOL_BLOCK_SIZE_LONG = 5000L;

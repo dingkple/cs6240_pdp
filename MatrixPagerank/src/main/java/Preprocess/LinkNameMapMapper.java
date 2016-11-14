@@ -21,12 +21,12 @@ import static Preprocess.Bz2WikiParser.processLine;
  * Created by kingkz on 11/11/16.
  */
 public class LinkNameMapMapper extends Mapper<LongWritable, Text, GraphKeyWritable,
-        TextArrayWritable> {
+        GraphKeyArrayWritable> {
 
     private XMLReader xmlReader;
     private Set<String> linkPageNames;
 
-    private HashMap<String, Set<String>> inlinkMap;
+    private HashMap<String, List<GraphKeyWritable>> inlinkMap;
 
 
     @Override
@@ -47,22 +47,39 @@ public class LinkNameMapMapper extends Mapper<LongWritable, Text, GraphKeyWritab
             // Get the name of the link
             linkPageNames.clear();
             String pageName = processLine(line.toString(), xmlReader);
+            GraphKeyWritable linkKey = new GraphKeyWritable(
+                    PagerankConfig.OUTLINK_TYPE,
+                    pageName,
+                    linkPageNames.size());
+
+            List<GraphKeyWritable> outlinks = new ArrayList<>();
             if (pageName.length() > 0) {
-                linkPageNames.add(pageName);
                 if (linkPageNames.contains(pageName)) {
                     linkPageNames.remove(pageName);
                 }
 
                 for (String name : linkPageNames) {
                     if (!inlinkMap.containsKey(name)) {
-                        inlinkMap.put(name, new HashSet<>());
+                        inlinkMap.put(name, new ArrayList<>());
                     }
-                    inlinkMap.get(name).add(pageName);
+                    inlinkMap.get(name).add(linkKey);
+                    outlinks.add(new GraphKeyWritable(
+                            PagerankConfig.OUTLINK_TYPE,
+                            name,
+                            linkPageNames.size()
+                    ));
                 }
+
                 context.write(new GraphKeyWritable(PagerankConfig
                                 .OUTLINK_TYPE,
                                 pageName),
-                        new TextArrayWritable(linkPageNames));
+                        new GraphKeyArrayWritable(Iterables.toArray(
+                                outlinks,
+                                GraphKeyWritable.class
+                        )));
+                context.write(new GraphKeyWritable(PagerankConfig.INLINK_TYPE,
+                        pageName),
+                        new GraphKeyArrayWritable());
             }
         }
     }
@@ -71,11 +88,13 @@ public class LinkNameMapMapper extends Mapper<LongWritable, Text, GraphKeyWritab
     protected void cleanup(Context context) throws IOException, InterruptedException {
         for (String name : inlinkMap.keySet()) {
             context.write(new GraphKeyWritable(PagerankConfig
-                    .INLINK_TYPE, name), new TextArrayWritable(inlinkMap.get
-                    (name)));
+                    .INLINK_TYPE, name), new GraphKeyArrayWritable(Iterables
+                    .toArray(inlinkMap
+                    .get
+                    (name), GraphKeyWritable.class)));
 
             context.write(new GraphKeyWritable(PagerankConfig.OUTLINK_TYPE,
-                    name), new TextArrayWritable());
+                    name), new GraphKeyArrayWritable());
         }
     }
 }

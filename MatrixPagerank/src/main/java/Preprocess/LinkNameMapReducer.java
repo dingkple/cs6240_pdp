@@ -14,13 +14,15 @@ import java.util.List;
 /**
  * Created by kingkz on 11/11/16.
  */
-public class LinkNameMapReducer extends Reducer<GraphKeyWritable, TextArrayWritable,
-        Writable, Writable> {
+public class LinkNameMapReducer extends Reducer<GraphKeyWritable,
+        GraphKeyArrayWritable, Writable, Writable> {
 
     private Counter linkCounter;
     private MultipleOutputs multipleOutput;
     private List<CellWritable> names;
     private List<CellWritable> danglings;
+    private int counter1;
+    private List<CellWritable> emptyInlinks;
 
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
@@ -28,32 +30,34 @@ public class LinkNameMapReducer extends Reducer<GraphKeyWritable, TextArrayWrita
         multipleOutput = new MultipleOutputs<>(context);
         names = new ArrayList<>();
         danglings = new ArrayList<>();
+        emptyInlinks = new ArrayList<>();
+        counter1 = 0;
     }
 
     @Override
-    protected void reduce(GraphKeyWritable key, Iterable<TextArrayWritable> values,
+    protected void reduce(GraphKeyWritable key, Iterable<GraphKeyArrayWritable> values,
                           Context context)
             throws IOException, InterruptedException {
 
         names.clear();
-        for (TextArrayWritable list : values) {
+        for (GraphKeyArrayWritable list : values) {
             if (list.get().length > 0) {
                 for (Writable w : list.get()) {
-                    Text t = (Text) w;
+                    GraphKeyWritable t = (GraphKeyWritable) w;
                     CellWritable cell = new CellWritable(
-                            t.toString().hashCode() , 0.0);
+                            t.getName().hashCode() , 1.0/t.getCount());
                     names.add(cell);
                 }
             }
         }
-
-        if (names.size() > 0) {
-            for (CellWritable cell : names) {
-                cell.setValue(1.0 / names.size());
-            }
-        } else {
-            danglings.add(new CellWritable(key.getName().hashCode(), 1.0));
-        }
+//
+//        if (names.size() > 0) {
+//            for (CellWritable cell : names) {
+//                cell.setValue(1.0 / names.size());
+//            }
+//        } else {
+//
+//        }
 
         CellArrayWritable outlinks = new CellArrayWritable(Iterables.toArray
                 (names, CellWritable.class));
@@ -69,6 +73,8 @@ public class LinkNameMapReducer extends Reducer<GraphKeyWritable, TextArrayWrita
                         outlinks,
                         PagerankConfig.OUTPUT_OUTLINKS + "/"
                 );
+            } else {
+                danglings.add(new CellWritable(key.getName().hashCode(), 1.0));
             }
 
             multipleOutput.write(
@@ -92,6 +98,10 @@ public class LinkNameMapReducer extends Reducer<GraphKeyWritable, TextArrayWrita
                         outlinks,
                         PagerankConfig.OUTPUT_INLINKS + "/"
                 );
+                counter1 += 1;
+            } else {
+                emptyInlinks.add(new CellWritable(key.getName().hashCode(),
+                        0.0));
             }
         }
 
@@ -101,6 +111,9 @@ public class LinkNameMapReducer extends Reducer<GraphKeyWritable, TextArrayWrita
     protected void cleanup(Context context) throws IOException, InterruptedException {
 
         CellWritable[] danglingArr = Iterables.toArray(danglings,
+                CellWritable.class);
+
+        CellWritable[] emptyInlinkArr = Iterables.toArray(emptyInlinks,
                 CellWritable.class);
         multipleOutput.write(
                 PagerankConfig.OUTPUT_OUTLINKS,
@@ -115,6 +128,22 @@ public class LinkNameMapReducer extends Reducer<GraphKeyWritable, TextArrayWrita
                 new CellArrayWritable(danglingArr),
                 PagerankConfig.OUTPUT_INLINKS + "/"
         );
+
+        multipleOutput.write(
+                PagerankConfig.OUTPUT_OUTLINKS,
+                new IntWritable(PagerankConfig.EMPTY_INLINKS.hashCode()),
+                new CellArrayWritable(emptyInlinkArr),
+                PagerankConfig.OUTPUT_OUTLINKS + "/"
+        );
+
+        multipleOutput.write(
+                PagerankConfig.OUTPUT_INLINKS,
+                new IntWritable(PagerankConfig.EMPTY_INLINKS.hashCode()),
+                new CellArrayWritable(emptyInlinkArr),
+                PagerankConfig.OUTPUT_INLINKS + "/"
+        );
+
+        System.out.println("counter1: " + counter1);
 
         multipleOutput.close();
     }

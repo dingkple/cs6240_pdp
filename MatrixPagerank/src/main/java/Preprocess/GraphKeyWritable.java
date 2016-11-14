@@ -13,28 +13,28 @@ public class GraphKeyWritable implements WritableComparable<GraphKeyWritable> {
 
     private String name;
     private int type;
-    private int rowcol;
+    private int count;
 
     public GraphKeyWritable() {
         this.name = "";
         this.type = -1;
-        this.rowcol = -1;
+        this.count = -1;
     }
 
-    public GraphKeyWritable(int type, String name, int rowcol) {
+    public GraphKeyWritable(int type, String name, int count) {
         this.name = name;
         this.type = type;
-        this.rowcol = rowcol;
+        this.count = count;
     }
 
     public GraphKeyWritable(int type, String name) {
         this.name = name;
         this.type = type;
-        this.rowcol = -1;
+        this.count = -1;
     }
 
-    public GraphKeyWritable(int type, int rowcol) {
-        this.rowcol = rowcol;
+    public GraphKeyWritable(int type, int count) {
+        this.count = count;
         this.type = type;
         this.name = "";
     }
@@ -55,32 +55,32 @@ public class GraphKeyWritable implements WritableComparable<GraphKeyWritable> {
         this.type = type;
     }
 
-    public int getRowcol() {
-        return rowcol;
+    public int getCount() {
+        return count;
     }
 
-    public void setRowcol(int rowcol) {
-        this.rowcol = rowcol;
+    public void setCount(int count) {
+        this.count = count;
     }
 
     @Override
     public void write(DataOutput out) throws IOException {
         out.writeUTF(name);
         out.writeInt(type);
-        out.writeInt(rowcol);
+        out.writeInt(count);
     }
 
     @Override
     public void readFields(DataInput in) throws IOException {
         name = in.readUTF();
         type = in.readInt();
-        rowcol = in.readInt();
+        count = in.readInt();
     }
 
     @Override
     public int compareTo(GraphKeyWritable o) {
-        if (rowcol != o.rowcol) {
-            return (int) (rowcol - o.rowcol);
+        if (count != o.count) {
+            return (int) (count - o.count);
         } else if (type != o.type) {
             return (int) (type - o.type);
         } else {
@@ -93,7 +93,7 @@ public class GraphKeyWritable implements WritableComparable<GraphKeyWritable> {
         if (obj instanceof GraphKeyWritable) {
             GraphKeyWritable g = (GraphKeyWritable) obj;
             if (g.name.equals(this.getName()) && g.type == this.type &&
-                    g.getRowcol() == this.getRowcol()) {
+                    g.getCount() == this.getCount()) {
                 return true;
             }
         }
@@ -103,13 +103,13 @@ public class GraphKeyWritable implements WritableComparable<GraphKeyWritable> {
     @Override
     public int hashCode() {
         int result = this.name.hashCode();
-        result = 31 * result + Long.hashCode(this.getRowcol());
+        result = 31 * result + Long.hashCode(this.getCount());
         result = 31 * result + Long.hashCode(this.getType());
         return result;
     }
 
     @Override
     public String toString() {
-        return this.getType() + " " + this.getRowcol() + " " + this.getName();
+        return this.getType() + " " + this.getCount() + " " + this.getName();
     }
 }

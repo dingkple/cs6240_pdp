@@ -92,7 +92,7 @@ public class MatricesGenerator {
         job.setReducerClass(LinkNameMapReducer.class);
 
         job.setMapOutputKeyClass(GraphKeyWritable.class);
-        job.setMapOutputValueClass(TextArrayWritable.class);
+        job.setMapOutputValueClass(GraphKeyArrayWritable.class);
 
         job.setOutputFormatClass(SequenceFileOutputFormat.class);
 

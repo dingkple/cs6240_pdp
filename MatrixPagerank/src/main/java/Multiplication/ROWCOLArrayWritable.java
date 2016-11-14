@@ -13,7 +13,17 @@ import java.util.List;
  */
 public class ROWCOLArrayWritable extends ArrayWritable {
     public ROWCOLArrayWritable(Iterable<ROWCOLWritable> rowcols) {
-        super(ROWCOLArrayWritable.class);
+        super(ROWCOLWritable.class);
         set(Iterables.toArray(rowcols, ROWCOLWritable.class));
+    }
+
+    public ROWCOLArrayWritable(ROWCOLWritable[] data) {
+        super(ROWCOLWritable.class);
+        set(data);
+    }
+
+    public ROWCOLArrayWritable() {
+        super(ROWCOLWritable.class);
+        set(new ROWCOLWritable[0]);
     }
 }

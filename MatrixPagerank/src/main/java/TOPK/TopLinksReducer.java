@@ -6,6 +6,9 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.TreeMap;
 
 /**
@@ -41,10 +44,12 @@ public class TopLinksReducer
         for (PagerankCellWritable cell : values) {
             if (cell.getName().length() > 0) {
                 linkname = cell.getName();
-            } else {
+                counter += 1;
+            } else if (cell.getPagerank() > 0) {
                 pagerank = cell.getPagerank();
+                counter += 1;
             }
-            counter += 1;
+
         }
         if (counter == 2) {
             topMap.put(pagerank, linkname);
@@ -56,7 +61,10 @@ public class TopLinksReducer
 
     @Override
     protected void cleanup(Context context) throws IOException, InterruptedException {
-        for (double weight : topMap.keySet()) {
+        List<Double> values = new ArrayList<>();
+        values.addAll(topMap.keySet());
+        values.sort((o1, o2) -> o2.compareTo(o1));
+        for (double weight : values) {
             context.write(new DoubleWritable(weight), new Text(topMap.get
                     (weight)));
         }

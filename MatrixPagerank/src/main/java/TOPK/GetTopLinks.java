@@ -14,6 +14,8 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.TreeMap;
 
 /**
  * Created by kingkz on 11/13/16.
@@ -21,14 +23,24 @@ import java.io.IOException;
 public class GetTopLinks {
 
 
-    public static void showTop(Configuration conf) throws Exception {
+    public static void showTop(Configuration conf, boolean isByRow) throws
+            Exception {
 
         Job job = Job.getInstance(conf);
 
         job.setJarByClass(GetTopLinks.class);
+
+        Path pagerankInput;
+
+        if (isByRow) {
+            pagerankInput = Utils.getPathInTemp(PagerankConfig.OUTPUT_PAGERANK + "11");
+        } else {
+            pagerankInput = Utils.getPathInTemp(PagerankConfig.OUTPUT_PAGERANK + "21");
+        }
+
         MultipleInputs.addInputPath(
                 job,
-                Utils.getPathInTemp(PagerankConfig.OUTPUT_PAGERANK + "0"),
+                pagerankInput,
                 SequenceFileInputFormat.class,
                 TopLinksMapper.class
         );
@@ -61,6 +73,6 @@ public class GetTopLinks {
 
     public static void main(String[] args) throws Exception {
         Configuration conf = new Configuration();
-        showTop(conf);
+        showTop(conf, true);
     }
 }

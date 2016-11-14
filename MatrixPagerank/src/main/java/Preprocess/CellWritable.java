@@ -57,4 +57,12 @@ public class CellWritable implements Writable {
         rowcol = in.readInt();
         value = in.readDouble();
     }
+
+    @Override
+    public int hashCode() {
+        int result = 0;
+        result = result * 31 + Integer.hashCode(rowcol);
+        result = result * 31 + Double.hashCode(value);
+        return result;
+    }
 }

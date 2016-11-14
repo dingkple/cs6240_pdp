@@ -1,5 +1,6 @@
 package Preprocess;
 
+import com.google.common.collect.Iterables;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
@@ -22,7 +23,12 @@ public class CellArrayWritable extends ArrayWritable {
 
     public CellArrayWritable() {
         super(CellWritable.class);
-        set(new CellWritable[0]);
+        set(new CellWritable[1]);
+    }
+
+    public CellArrayWritable(Iterable<CellWritable> cells) {
+        super(CellWritable.class);
+        set(Iterables.toArray(cells, CellWritable.class));
     }
 
     public CellArrayWritable(CellArrayWritable cellArrayWritable) {
