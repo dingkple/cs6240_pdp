@@ -86,7 +86,6 @@ public class PRValueV1Mapper extends Mapper<IntWritable,
                 blockMap.put(k, new HashSet<>());
             }
             blockMap.get(k).add(newCell);
-
         }
     }
 
@@ -99,12 +98,10 @@ public class PRValueV1Mapper extends Mapper<IntWritable,
             for (int i = 0; i < blockNum; i++) {
                 context.write(
                         new IntWritable(i),
-                        new ROWCOLArrayWritable(
-                                new ROWCOLWritable[]{
-                                        new ROWCOLWritable(
-                                                PagerankConfig.PAGERANK_COL.hashCode(),
-                                                new CellArrayWritable(values))})
-
+                        new ROWCOLArrayWritable(new ROWCOLWritable[]{
+                                new ROWCOLWritable(
+                                        PagerankConfig.PAGERANK_COL.hashCode(),
+                                        new CellArrayWritable(values))})
                 );
             }
         } else {

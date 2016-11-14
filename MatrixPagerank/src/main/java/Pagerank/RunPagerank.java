@@ -52,6 +52,7 @@ public class RunPagerank {
 
             job.setJarByClass(RunPagerank.class);
 
+            Path output;
             if (!isByRow) {
                 MultipleInputs.addInputPath(
                         job,
@@ -59,6 +60,16 @@ public class RunPagerank {
                                 + String.valueOf(2 * i - 1)),
                         SequenceFileInputFormat.class,
                         PRValueV1Mapper.class
+                );
+                MultipleInputs.addInputPath(
+                        job,
+                        Utils.getPathInTemp(PagerankConfig.OUTPUT_OUTLINKS),
+                        SequenceFileInputFormat.class,
+                        MatricesMapper.class
+                );
+
+                output = Utils.getPathInTemp(
+                        PagerankConfig.OUTPUT_PAGERANK + String.valueOf(2 * i)
                 );
             } else {
                 MultipleInputs.addInputPath(
@@ -68,23 +79,19 @@ public class RunPagerank {
                         SequenceFileInputFormat.class,
                         PRValueV1Mapper.class
                 );
-            }
-
-            if (isByRow) {
                 MultipleInputs.addInputPath(
                         job,
                         Utils.getPathInTemp(PagerankConfig.OUTPUT_INLINKS),
                         SequenceFileInputFormat.class,
                         MatricesMapper.class
                 );
-            } else {
-                MultipleInputs.addInputPath(
-                        job,
-                        Utils.getPathInTemp(PagerankConfig.OUTPUT_OUTLINKS),
-                        SequenceFileInputFormat.class,
-                        MatricesMapper.class
+
+                output = Utils.getPathInTemp(
+                        PagerankConfig.OUTPUT_PAGERANK + String.valueOf(i+1)
+
                 );
             }
+
 
             job.setMapOutputKeyClass(IntWritable.class);
             job.setMapOutputValueClass(ROWCOLArrayWritable.class);
@@ -93,18 +100,6 @@ public class RunPagerank {
 
             job.setReducerClass(MultiplicationByRowReducer.class);
             job.setOutputFormatClass(SequenceFileOutputFormat.class);
-
-            Path output;
-            if (!isByRow) {
-                output = Utils.getPathInTemp(
-                        PagerankConfig.OUTPUT_PAGERANK + String.valueOf(2 * i)
-                );
-            } else {
-                output = Utils.getPathInTemp(
-                        PagerankConfig.OUTPUT_PAGERANK + String.valueOf(i+1)
-
-                );
-            }
 
             Utils.CheckOutputPath(conf, output);
             FileOutputFormat.setOutputPath(job, output);
