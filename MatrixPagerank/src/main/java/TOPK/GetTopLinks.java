@@ -53,13 +53,21 @@ public class GetTopLinks {
         );
 
         job.setReducerClass(TopLinksReducer.class);
+        job.setNumReduceTasks(1);
 
         job.setOutputKeyClass(IntWritable.class);
         job.setOutputValueClass(PagerankCellWritable.class);
         job.setOutputFormatClass(TextOutputFormat.class);
 
-        Path output = new Path(PagerankConfig.FINAL_OUTPUT);
-        Utils.CheckOutputPath(conf, output);
+        Path output;
+
+        if (isByRow) {
+            output = Utils.getFinalOutputPathByKey(conf,
+                    PagerankConfig.TOP_100_PATH_BY_ROW);
+        } else {
+            output = Utils.getFinalOutputPathByKey(conf, PagerankConfig
+                    .TOP_100_PATH_BY_COL);
+        }
 
         FileOutputFormat.setOutputPath(job, output);
 
@@ -69,7 +77,6 @@ public class GetTopLinks {
             throw new Exception("Failed at top k");
         }
     }
-
 
     public static void main(String[] args) throws Exception {
         Configuration conf = new Configuration();

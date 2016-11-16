@@ -25,10 +25,16 @@ public class PagerankConfig {
     public static final String DANGLING_FILENAME = "danglingsum";
     public static final String EMPTY_INLINKS = "~~~";
     public static final String PARTITION_BY_ROW = "partitionbyrow";
+    public static final int LINK_MAP_TYPE = 3;
+    public static final String MAPPED_OUTPUT = "mappedoutput";
+    public static final int DANGLING_NAME_INT = -1;
+    public static final int EMPTY_INLINKS_INT = -1;
     public static Long KEY_TYEP_ROW = 1L;
     public static int PR_BLOCK_SIZE = 5000;
-    public static Long ROWCOL_BLOCK_SIZE_LONG = 5000L;
+    public static Long ROWCOL_BLOCK_SIZE_LONG = 5000000L;
     public static String ROWCOL_BLOCK_SIZE_STRING = "rowcolblocksize";
+    public static String BY_ROW_OUTPUT = "byrowoutput";
+    public static String BY_COL_OUTPUT = "bycoloutput";
 
     public static enum PagerankCounter{
         LINK_COUNTER,
@@ -36,7 +42,7 @@ public class PagerankConfig {
         NUMBER_OF_DANGLING
     }
 
-    public static final String DANGLING_NAME = "~";
+    public static final String DANGLING_NAME = "~~~~~~~";
     public static final double PAGERANK_D = 0.85;
 
     public static final int TOP_NUMBER = 100;
@@ -47,7 +53,8 @@ public class PagerankConfig {
     public static final String TIME_USED_KEY = "time_used";
     public static final String ENTROPY_NAME = "~~";
     public static final String ITER_NUM = "iter_num";
-    public static final String TOP_100_PATH = "top_100_links";
+    public static final String TOP_100_PATH_BY_ROW = "top_100_links_by_row";
+    public static final String TOP_100_PATH_BY_COL = "top_100_links_by_col";
     public static final String URI_ROOT = "uri_root";
     public static final String TEMP_ROOT = "temp";
     public static final String FINAL_OUTPUT = "final_output";

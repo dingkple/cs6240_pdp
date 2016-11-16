@@ -5,14 +5,12 @@ import com.google.common.collect.Iterables;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.hadoop.yarn.webapp.view.HtmlPage;
 import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
 
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static Preprocess.Bz2WikiParser.createParser;
 import static Preprocess.Bz2WikiParser.processLine;
@@ -47,6 +45,11 @@ public class LinkNameMapMapper extends Mapper<LongWritable, Text, GraphKeyWritab
             // Get the name of the link
             linkPageNames.clear();
             String pageName = processLine(line.toString(), xmlReader);
+
+            if (linkPageNames.contains(pageName)) {
+                linkPageNames.remove(pageName);
+            }
+
             GraphKeyWritable linkKey = new GraphKeyWritable(
                     PagerankConfig.OUTLINK_TYPE,
                     pageName,
@@ -54,9 +57,6 @@ public class LinkNameMapMapper extends Mapper<LongWritable, Text, GraphKeyWritab
 
             List<GraphKeyWritable> outlinks = new ArrayList<>();
             if (pageName.length() > 0) {
-                if (linkPageNames.contains(pageName)) {
-                    linkPageNames.remove(pageName);
-                }
 
                 for (String name : linkPageNames) {
                     if (!inlinkMap.containsKey(name)) {
@@ -80,6 +80,10 @@ public class LinkNameMapMapper extends Mapper<LongWritable, Text, GraphKeyWritab
                 context.write(new GraphKeyWritable(PagerankConfig.INLINK_TYPE,
                         pageName),
                         new GraphKeyArrayWritable());
+
+                context.write(new GraphKeyWritable(PagerankConfig.LINK_MAP_TYPE,
+                        pageName),
+                        new GraphKeyArrayWritable());
             }
         }
     }
@@ -97,6 +101,14 @@ public class LinkNameMapMapper extends Mapper<LongWritable, Text, GraphKeyWritab
                                 )
                     )
             );
+
+            context.write(
+                    new GraphKeyWritable(
+                            PagerankConfig.LINK_MAP_TYPE,
+                            name),
+                    new GraphKeyArrayWritable()
+                    );
+
 
             context.write(new GraphKeyWritable(PagerankConfig.OUTLINK_TYPE,
                     name), new GraphKeyArrayWritable());

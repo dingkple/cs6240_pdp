@@ -4,6 +4,7 @@ package Util;
  * Created by kingkz on 11/11/16.
  */
 
+import Config.PagerankConfig;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -162,6 +163,20 @@ public class Utils {
     public static void ensureFinalPath(Configuration conf, Path path, boolean newPath) throws IOException {
         FileSystem fs = getFileSystem(conf);
         check(fs, path, newPath);
+    }
+
+    public static Path getOutputPathByIterNum(int i) {
+        return Utils.getPathInTemp(PagerankConfig.OUTPUT_ROOT_PATH +
+                "/output_" + i);
+    }
+
+    public static Path getFinalOutputPathByKey(Configuration conf, String key)
+            throws IOException {
+        Path path = new Path(conf.get(PagerankConfig.FINAL_OUTPUT));
+        Utils.ensureFinalPath(conf, path, false);
+        Path newPath = new Path(conf.get(PagerankConfig.FINAL_OUTPUT) + "/" + key);
+        Utils.CheckFinalOutputPath(conf, newPath);
+        return newPath;
     }
 
 }

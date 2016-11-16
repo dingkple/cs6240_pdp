@@ -28,7 +28,9 @@ public class MultiplicationByRowReducer extends Reducer<IntWritable, ROWCOLArray
     private double counter2;
     private double counter3;
     private int counter4;
-    private boolean flag;
+    private double counter5;
+
+    private double counter6 = 0;
 
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
@@ -41,9 +43,9 @@ public class MultiplicationByRowReducer extends Reducer<IntWritable, ROWCOLArray
         counter2 = 0.0;
         counter3 = 0.0;
         counter4 = 0;
+        counter5 = 0.0;
 
         tracker = new HashMap<>();
-        flag = false;
     }
 
     @Override
@@ -68,11 +70,9 @@ public class MultiplicationByRowReducer extends Reducer<IntWritable, ROWCOLArray
                                 .get(cell.getRowcol()) + cell.getValue());
                         counter3 += cell.getValue();
 //                        pagerankOldMap.put(cell.getRowcol(), cell.getValue());
-                        if (!flag)
+                        if (!tracker.containsKey(cell.getRowcol()))
                             tracker.put(cell.getRowcol(), cell.getValue());
                     }
-                    flag = true;
-
                     int l2 = pagerankOldMap.size();
                 } else {
                     this.rowdata.add(new ROWCOLWritable(w));
@@ -193,7 +193,11 @@ public class MultiplicationByRowReducer extends Reducer<IntWritable, ROWCOLArray
                                     + change);
                     tracker.put(c.getRowcol(), tracker.get(c.getRowcol()) -
                             change);
+                } else {
+                    System.out.println("fuck");
                 }
+//                if (c.getValue() < 1)
+                counter6 += c.getValue();
             }
         }
     }
@@ -204,6 +208,11 @@ public class MultiplicationByRowReducer extends Reducer<IntWritable, ROWCOLArray
             writeValues(context);
         }
 
-        System.out.println(counter1 + " " + counter2 + " " + counter4);
+        double k = 0;
+        for (int key: tracker.keySet()) {
+            k += tracker.get(key);
+        }
+
+        System.out.println(counter1 + " " + counter2 + " " + counter4 + " " + k);
     }
 }
