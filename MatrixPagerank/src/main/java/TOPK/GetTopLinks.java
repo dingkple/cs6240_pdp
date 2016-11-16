@@ -32,12 +32,7 @@ public class GetTopLinks {
 
         Path pagerankInput;
 
-        if (isByRow) {
-            pagerankInput = Utils.getPathInTemp(PagerankConfig.OUTPUT_PAGERANK + "11");
-        } else {
-            pagerankInput = Utils.getPathInTemp(PagerankConfig
-                    .OUTPUT_PAGERANK + "11");
-        }
+        pagerankInput = Utils.getPathInTemp(PagerankConfig.OUTPUT_PAGERANK + "11");
 
         MultipleInputs.addInputPath(
                 job,
@@ -46,18 +41,21 @@ public class GetTopLinks {
                 TopLinksMapper.class
         );
 
-        MultipleInputs.addInputPath(
-                job,
-                Utils.getPathInTemp(PagerankConfig.OUTPUT_LINKMAP),
-                SequenceFileInputFormat.class,
-                NameHashMapper.class
-        );
+//        MultipleInputs.addInputPath(
+//                job,
+//                Utils.getPathInTemp(PagerankConfig.OUTPUT_LINKMAP),
+//                SequenceFileInputFormat.class,
+//                NameHashMapper.class
+//        );
 
         job.setReducerClass(TopLinksReducer.class);
         job.setNumReduceTasks(1);
 
-        job.setOutputKeyClass(IntWritable.class);
-        job.setOutputValueClass(PagerankCellWritable.class);
+        job.setMapOutputKeyClass(DoubleWritable.class);
+        job.setMapOutputValueClass(IntWritable.class);
+
+        job.setOutputKeyClass(DoubleWritable.class);
+        job.setOutputValueClass(Text.class);
         job.setOutputFormatClass(TextOutputFormat.class);
 
         Path output;
@@ -66,8 +64,8 @@ public class GetTopLinks {
             output = Utils.getFinalOutputPathByKey(conf,
                     PagerankConfig.TOP_100_PATH_BY_ROW);
         } else {
-            output = Utils.getFinalOutputPathByKey(conf, PagerankConfig
-                    .TOP_100_PATH_BY_COL);
+            output = Utils.getFinalOutputPathByKey(conf,
+                    PagerankConfig.TOP_100_PATH_BY_COL);
         }
 
         FileOutputFormat.setOutputPath(job, output);
@@ -81,6 +79,9 @@ public class GetTopLinks {
 
     public static void main(String[] args) throws Exception {
         Configuration conf = new Configuration();
-        showTop(conf, true);
+//        showTop(conf, true);
+
+        System.out.println(" temp/pagerankvalue1/-r-00000".contains
+                (PagerankConfig.OUTPUT_PAGERANK+1));
     }
 }

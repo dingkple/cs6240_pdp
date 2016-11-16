@@ -5,6 +5,7 @@ import Multiplication.*;
 import Preprocess.MatricesGenerator;
 import Util.Utils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.IntWritable;
@@ -17,6 +18,7 @@ import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
 import java.io.IOException;
+import java.net.URI;
 
 import static TOPK.GetTopLinks.showTop;
 
@@ -76,8 +78,14 @@ public class RunPagerank {
             );
 
             if (conf.get(PagerankConfig.URI_ROOT) != null) {
-                job.addCacheFile(Utils.getPathInTemp(PagerankConfig
-                        .OUTPUT_PAGERANK + String.valueOf(i)).toUri());
+                String path = PagerankConfig
+                        .OUTPUT_PAGERANK + String.valueOf(i);
+                if (i == 1) {
+                    path += "/-r-00000";
+                } else {
+                    path += "/part-r-00000";
+                }
+                job.addCacheFile(new URI(path));
             }
 
             job.setMapOutputKeyClass(IntWritable.class);

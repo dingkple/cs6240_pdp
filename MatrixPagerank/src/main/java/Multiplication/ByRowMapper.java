@@ -11,7 +11,6 @@ import org.apache.hadoop.mapreduce.Mapper;
 import java.io.IOException;
 import java.net.URI;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -22,42 +21,50 @@ public class ByRowMapper extends Mapper<IntWritable, CellArrayWritable,
 
     private long numberOfLinks;
     private int iterNumber;
-    private int blockNum;
-    private Map<Integer, List<ROWCOLWritable>> blockMap;
     private boolean isByRow;
     private double counter;
     private Map<Integer, Double> pagerankMap;
     private double lastDanglingSum;
     private Map<Integer, Double> pagerankValueMap;
 
-    private double counter2 = 0;
-
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
-        numberOfLinks = Long.valueOf(
-                Utils.readData(PagerankConfig.NUMBER_OF_LINKS, context
-                        .getConfiguration())
-        );
+        if (context.getConfiguration().get(PagerankConfig.URI_ROOT) !=
+                null) {
+            if (context.getConfiguration().get(PagerankConfig
+                    .NUMBER_OF_LINKS) != null)
+                numberOfLinks = context.getConfiguration().getLong(PagerankConfig
+                        .NUMBER_OF_LINKS, 0);
+            else {
+                throw new IOException("Can not read number of Links");
+            }
+        } else {
+            numberOfLinks = Long.valueOf(
+                    Utils.readData(PagerankConfig.NUMBER_OF_LINKS, context
+                            .getConfiguration())
+            );
+        }
 
         iterNumber = Integer.valueOf(context.getConfiguration().get(PagerankConfig
                 .ITER_NUM));
-
-        blockNum = context.getConfiguration().getInt(String.valueOf(PagerankConfig
-                .ROWCOL_BLOCK_SIZE_STRING), -1);
-
-        blockMap = new HashMap<>();
 
         isByRow = context.getConfiguration().getBoolean(PagerankConfig
                 .PARTITION_BY_ROW, true);
 
         counter = 0.0;
 
-
         lastDanglingSum = context.getConfiguration().getDouble(PagerankConfig
                 .DANGLING_NAME, 0);
 
         pagerankValueMap = new HashMap<>();
-        pagerankMap = readPagerankValue(context);
+
+        try {
+            pagerankMap = readPagerankValue(context);
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("Error reading pagerankvalues");
+            throw new IOException("by row mapper serup");
+        }
     }
 
 
@@ -65,32 +72,43 @@ public class ByRowMapper extends Mapper<IntWritable, CellArrayWritable,
             IOException {
         URI[] uriArray = context.getCacheFiles();
 
-        String path = null;
+        URI path = null;
         if (uriArray != null) {
             for (URI uri : uriArray) {
-                if (uri.getPath().contains(PagerankConfig
+                System.out.println("current checking uri: " + uri.toString());
+                System.out.println("pagerankdir: " + PagerankConfig
+                        .OUTPUT_PAGERANK + iterNumber);
+                System.out.println(uri.toString().contains(PagerankConfig
+                        .OUTPUT_PAGERANK + iterNumber));
+                if (uri.toString().contains(PagerankConfig
                         .OUTPUT_PAGERANK + iterNumber)) {
-                    path = uri.getPath();
+                    path = uri;
+                    System.out.println("Im not NULL: !!!" + path);
                     break;
                 }
             }
         }
 
         if (path == null) {
-            path = Utils.getPathInTemp(PagerankConfig.OUTPUT_PAGERANK +
-                    iterNumber)
-                    .toString();
+            String pathStr = PagerankConfig
+                    .OUTPUT_PAGERANK +
+                    iterNumber;
+            if (iterNumber == 1) {
+                pathStr += "/-r-00000";
+            } else {
+                pathStr += "/part-r-00000";
+            }
+            path = Utils.getPathInTemp(pathStr).toUri();
         }
 
-        if (iterNumber == 1) {
-            path += "/-r-00000";
-        } else {
-            path += "/part-r-00000";
-        }
+        System.out.println("final path: " + path);
+
+        Path pagerankPath = new Path(path);
+        System.out.println("final: " + pagerankPath.toString());
 
         SequenceFile.Reader reader = new SequenceFile.Reader(context
                 .getConfiguration(), SequenceFile.Reader.file
-                (new Path(path)));
+                (pagerankPath));
 
         Map<Integer, Double> map = new HashMap<>();
         while (true) {
@@ -126,7 +144,6 @@ public class ByRowMapper extends Mapper<IntWritable, CellArrayWritable,
                 pagerankValueMap.put(rowId, 0.0);
 
             if (pagerankMap.containsKey(c.getRowcol())) {
-                counter2 += c.getValue();
                 double change = c.getValue() * pagerankMap.get(c.getRowcol());
                 pagerankValueMap.put(
                         rowId,

@@ -31,28 +31,35 @@ public class ByRowReducer extends Reducer<IntWritable, DoubleWritable,
             IOException {
         URI[] uriArray = context.getCacheFiles();
 
-        String path = null;
+        URI path = null;
         if (uriArray != null) {
             for (URI uri : uriArray) {
-                if (uri.getPath().contains(PagerankConfig
+                System.out.println("current checking uri: " + uri.toString());
+                System.out.println("pagerankdir: " + PagerankConfig
+                        .OUTPUT_PAGERANK + iterNumber);
+                System.out.println(uri.toString().contains(PagerankConfig
+                        .OUTPUT_PAGERANK + iterNumber));
+                if (uri.toString().contains(PagerankConfig
                         .OUTPUT_PAGERANK + iterNumber)) {
-                    path = uri.getPath();
+                    path = uri;
+                    System.out.println("Im not NULL: !!!" + path);
                     break;
                 }
             }
         }
 
         if (path == null) {
-            path = Utils.getPathInTemp(PagerankConfig.OUTPUT_PAGERANK +
-                    iterNumber)
-                    .toString();
+            String pathStr = PagerankConfig
+                    .OUTPUT_PAGERANK +
+                    iterNumber;
+            if (iterNumber == 1) {
+                pathStr += "/-r-00000";
+            } else {
+                pathStr += "/part-r-00000";
+            }
+            path = Utils.getPathInTemp(pathStr).toUri();
         }
 
-        if (iterNumber == 1) {
-            path += "/-r-00000";
-        } else {
-            path += "/part-r-00000";
-        }
 
         SequenceFile.Reader reader = new SequenceFile.Reader(context
                 .getConfiguration(), SequenceFile.Reader.file
@@ -95,12 +102,12 @@ public class ByRowReducer extends Reducer<IntWritable, DoubleWritable,
             v += d.get();
         }
 
-        if (key.get() == PagerankConfig.DANGLING_NAME_INT) {
-            Utils.writeData(PagerankConfig.DANGLING_FILENAME, String.valueOf
-                    (v), context.getConfiguration());
-        } else {
+//        if (key.get() == PagerankConfig.DANGLING_NAME_INT) {
+//            Utils.writeData(PagerankConfig.DANGLING_FILENAME, String.valueOf
+//                    (v), context.getConfiguration());
+//        } else {
             pagerankMap.put(key.get(), v);
-        }
+//        }
 
         counter += v;
     }
@@ -117,6 +124,9 @@ public class ByRowReducer extends Reducer<IntWritable, DoubleWritable,
                     value
             );
         }
+
+        Utils.writeData(PagerankConfig.DANGLING_FILENAME, String.valueOf(1 -
+                counter), context.getConfiguration());
         System.out.println(counter);
     }
 }

@@ -14,7 +14,7 @@ import java.util.TreeMap;
  * Created by kingkz on 11/13/16.
  */
 public class TopLinksMapper extends Mapper<IntWritable, DoubleWritable,
-        IntWritable, PagerankCellWritable> {
+        DoubleWritable, IntWritable> {
 
     private TreeMap<Double, Integer> topMap;
 
@@ -24,12 +24,24 @@ public class TopLinksMapper extends Mapper<IntWritable, DoubleWritable,
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
         topMap = new TreeMap<>();
-        danglingSum = Double.parseDouble(
-                Utils.readData(PagerankConfig.DANGLING_FILENAME,
-                        context.getConfiguration()));
 
-        numberOfLinks = Long.parseLong(Utils.readData(PagerankConfig.NUMBER_OF_LINKS,
-                context.getConfiguration()));
+        if (context.getConfiguration().get(PagerankConfig.DANGLING_NAME)==null) {
+            danglingSum = Double.parseDouble(
+                    Utils.readData(PagerankConfig.DANGLING_FILENAME,
+                            context.getConfiguration()));
+        } else {
+            danglingSum = context.getConfiguration().getDouble(PagerankConfig
+                    .DANGLING_NAME, 0.0);
+        }
+
+        if (context.getConfiguration().get(PagerankConfig.DANGLING_NAME) ==
+                null) {
+            numberOfLinks = Long.parseLong(Utils.readData(PagerankConfig.NUMBER_OF_LINKS,
+                    context.getConfiguration()));
+        } else {
+            numberOfLinks = context.getConfiguration().getLong(PagerankConfig
+                    .NUMBER_OF_LINKS, 0);
+        }
     }
 
     @Override
@@ -46,8 +58,8 @@ public class TopLinksMapper extends Mapper<IntWritable, DoubleWritable,
     protected void cleanup(Context context) throws IOException, InterruptedException {
         for (Double weight : topMap.descendingKeySet()) {
             context.write(
-                    new IntWritable(topMap.get(weight)),
-                    new PagerankCellWritable("", weight));
+                    new DoubleWritable(weight),
+                    new IntWritable(topMap.get(weight)));
         }
     }
 }
