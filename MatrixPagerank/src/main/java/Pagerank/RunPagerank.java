@@ -15,7 +15,6 @@ import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
-import org.apache.hadoop.yarn.util.SystemClock;
 
 import java.io.IOException;
 
@@ -35,16 +34,14 @@ public class RunPagerank {
         long numberOfLinks = Long.valueOf(Utils
                 .readData(PagerankConfig.NUMBER_OF_LINKS, conf));
         conf.setLong(PagerankConfig.NUMBER_OF_LINKS, numberOfLinks);
-        int blockNum = Math.max(1, (int)(numberOfLinks /
-                PagerankConfig.ROWCOL_BLOCK_SIZE_LONG));
 
-        conf.setInt(PagerankConfig.ROWCOL_BLOCK_SIZE_STRING, blockNum);
         conf.setBoolean(PagerankConfig.PARTITION_BY_ROW, isByRow);
 
         for (int i = 1; i <= 10; i++) {
             conf.setInt(PagerankConfig.ITER_NUM, i);
             double last = Double.parseDouble
                     (Utils.readData(PagerankConfig.DANGLING_FILENAME, conf));
+            System.out.println("Dangling sum: " + last);
             if (i > 1) {
                 conf.setDouble(PagerankConfig.DANGLING_NAME, last);
             }
@@ -58,67 +55,48 @@ public class RunPagerank {
             if (!isByRow) {
                 MultipleInputs.addInputPath(
                         job,
-                        Utils.getPathInTemp(PagerankConfig.OUTPUT_PAGERANK
-                                + String.valueOf(2 * i - 1)),
+                        Utils.getPathInTemp(PagerankConfig.MAPPED_OUTPUT + "/" +
+                                PagerankConfig.OUTPUT_OUTLINKS_MAPPED),
                         SequenceFileInputFormat.class,
-                        PRValueV1Mapper.class
-                );
-                MultipleInputs.addInputPath(
-                        job,
-                        Utils.getPathInTemp(PagerankConfig.OUTPUT_OUTLINKS),
-                        SequenceFileInputFormat.class,
-                        MatricesMapper.class
+                        ByRowMapper.class
                 );
 
-                output = Utils.getPathInTemp(
-                        PagerankConfig.OUTPUT_PAGERANK + String.valueOf(2 * i)
-                );
             } else {
                 MultipleInputs.addInputPath(
                         job,
-                        Utils.getPathInTemp(PagerankConfig.OUTPUT_PAGERANK
-                        + String.valueOf(i)),
+                        Utils.getPathInTemp(PagerankConfig.MAPPED_OUTPUT + "/" +
+                                PagerankConfig.OUTPUT_INLINKS_MAPPED),
                         SequenceFileInputFormat.class,
-                        PRValueV1Mapper.class
-                );
-                MultipleInputs.addInputPath(
-                        job,
-                        Utils.getPathInTemp(PagerankConfig.OUTPUT_INLINKS),
-                        SequenceFileInputFormat.class,
-                        MatricesMapper.class
+                        ByRowMapper.class
                 );
 
-                output = Utils.getPathInTemp(
-                        PagerankConfig.OUTPUT_PAGERANK + String.valueOf(i+1)
+            }
+            output = Utils.getPathInTemp(
+                    PagerankConfig.OUTPUT_PAGERANK + String.valueOf(i+1)
+            );
 
-                );
+            if (conf.get(PagerankConfig.URI_ROOT) != null) {
+                job.addCacheFile(Utils.getPathInTemp(PagerankConfig
+                        .OUTPUT_PAGERANK + String.valueOf(i)).toUri());
             }
 
             job.setMapOutputKeyClass(IntWritable.class);
-            job.setMapOutputValueClass(ROWCOLArrayWritable.class);
+            job.setMapOutputValueClass(DoubleWritable.class);
             job.setOutputKeyClass(IntWritable.class);
             job.setOutputValueClass(DoubleWritable.class);
 
-            job.setPartitionerClass(MultiplicationPartitioner.class);
-            job.setReducerClass(MultiplicationByRowReducer.class);
+            job.setReducerClass(ByRowReducer.class);
+            job.setNumReduceTasks(1);
             job.setOutputFormatClass(SequenceFileOutputFormat.class);
 
             Utils.CheckOutputPath(conf, output);
             FileOutputFormat.setOutputPath(job, output);
-
-//            if (i > 1) {
-//                job.addCacheFile(Utils.getPathInTemp(PagerankConfig
-//                        .DANGLING_FILENAME).toUri());
-//            }
 
             boolean ok = job.waitForCompletion(true);
             if (!ok) {
                 throw  new Exception("Multiplication Failed");
             }
 
-            if (!isByRow) {
-                collectValueFromCols(conf, i);
-            }
         }
     }
 
@@ -162,7 +140,6 @@ public class RunPagerank {
         String[] otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
 
         Path input;
-
 
         // If output is a URI, like hdfs:// or s3://, save it to conf
         // or if it's a local path, save it to conf too.
@@ -216,6 +193,7 @@ public class RunPagerank {
                 getTimeUsed(prePareTime, iterationTime),
                 getTimeUsed(iterationTime, getTopTime)
         );
+
         Utils.writeStringToFinalPath(value, Utils.getFinalOutputPathByKey(conf,
                 PagerankConfig.TIME_USED_KEY + iterName), conf);
     }

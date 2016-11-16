@@ -111,7 +111,6 @@ public class Utils {
         return new Path(Config.PagerankConfig.TEMP_ROOT+ "/" + key);
     }
 
-
     public static void CheckOutputPath(Configuration conf, Path path) throws IOException {
         FileSystem fs = FileSystem.get(conf);
         fs.delete(path, true);

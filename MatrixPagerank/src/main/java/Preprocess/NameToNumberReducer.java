@@ -33,7 +33,7 @@ public class NameToNumberReducer extends Reducer<GraphKeyWritable,
                         PagerankConfig.OUTPUT_OUTLINKS_MAPPED,
                         new IntWritable(key.getCount()),
                         cellArrayWritable,
-                        PagerankConfig.OUTPUT_INLINKS_MAPPED + "/"
+                        PagerankConfig.OUTPUT_OUTLINKS + "/"
                 );
             } else {
                 mos.write(

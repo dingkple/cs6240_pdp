@@ -35,7 +35,8 @@ public class GetTopLinks {
         if (isByRow) {
             pagerankInput = Utils.getPathInTemp(PagerankConfig.OUTPUT_PAGERANK + "11");
         } else {
-            pagerankInput = Utils.getPathInTemp(PagerankConfig.OUTPUT_PAGERANK + "21");
+            pagerankInput = Utils.getPathInTemp(PagerankConfig
+                    .OUTPUT_PAGERANK + "11");
         }
 
         MultipleInputs.addInputPath(

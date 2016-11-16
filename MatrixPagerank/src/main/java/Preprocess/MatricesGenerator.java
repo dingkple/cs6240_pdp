@@ -153,8 +153,8 @@ public class MatricesGenerator {
                 CellArrayWritable.class
         );
 
-        Path output = new Path(PagerankConfig
-                .MAPPED_OUTPUT);
+        Path output = new Path(Utils.getPathInTemp(PagerankConfig
+                .MAPPED_OUTPUT).toString());
         Utils.CheckOutputPath(conf, output);
         job.setOutputFormatClass(SequenceFileOutputFormat.class);
         FileOutputFormat.setOutputPath(job, output);

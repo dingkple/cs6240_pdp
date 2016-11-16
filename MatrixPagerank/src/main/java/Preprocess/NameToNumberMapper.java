@@ -12,7 +12,10 @@ import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Created by kingkz on 11/15/16.
@@ -88,7 +91,7 @@ public class NameToNumberMapper extends Mapper<GraphKeyWritable, TextCellArrayWr
                         PagerankConfig.OUTPUT_OUTLINKS_MAPPED,
                         new IntWritable(linknameMap.get(key.getName())),
                         new CellArrayWritable(list),
-                        PagerankConfig.OUTPUT_INLINKS_MAPPED + "/"
+                        PagerankConfig.OUTPUT_OUTLINKS_MAPPED + "/"
                 );
             } else {
                 mos.write(
@@ -107,5 +110,10 @@ public class NameToNumberMapper extends Mapper<GraphKeyWritable, TextCellArrayWr
             e.printStackTrace();
             System.err.println("No name found");
         }
+    }
+
+    @Override
+    protected void cleanup(Context context) throws IOException, InterruptedException {
+        mos.close();
     }
 }

@@ -10,6 +10,7 @@ import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.PriorityQueue;
 
 /**
  * Created by kingkz on 11/11/16.
@@ -60,7 +61,6 @@ public class LinkNameMapReducer extends Reducer<GraphKeyWritable,
         }
 
         TextCellArrayWritable outlinks = new TextCellArrayWritable(names);
-
 
         if (key.getType() == PagerankConfig.OUTLINK_TYPE) {
 
@@ -132,24 +132,24 @@ public class LinkNameMapReducer extends Reducer<GraphKeyWritable,
                 new TextCellArrayWritable(danglingArr),
                 PagerankConfig.OUTPUT_INLINKS + "/"
         );
-
-        multipleOutput.write(
-                PagerankConfig.OUTPUT_OUTLINKS,
-                new GraphKeyWritable(
-                        PagerankConfig.OUTLINK_TYPE,
-                        PagerankConfig.EMPTY_INLINKS),
-                new TextCellArrayWritable(emptyInlinkArr),
-                PagerankConfig.OUTPUT_OUTLINKS + "/"
-        );
-
-        multipleOutput.write(
-                PagerankConfig.OUTPUT_INLINKS,
-                new GraphKeyWritable(
-                        PagerankConfig.INLINK_TYPE,
-                        PagerankConfig.EMPTY_INLINKS),
-                new TextCellArrayWritable(emptyInlinkArr),
-                PagerankConfig.OUTPUT_INLINKS + "/"
-        );
+//
+//        multipleOutput.write(
+//                PagerankConfig.OUTPUT_OUTLINKS,
+//                new GraphKeyWritable(
+//                        PagerankConfig.OUTLINK_TYPE,
+//                        PagerankConfig.EMPTY_INLINKS),
+//                new TextCellArrayWritable(emptyInlinkArr),
+//                PagerankConfig.OUTPUT_OUTLINKS + "/"
+//        );
+//
+//        multipleOutput.write(
+//                PagerankConfig.OUTPUT_INLINKS,
+//                new GraphKeyWritable(
+//                        PagerankConfig.INLINK_TYPE,
+//                        PagerankConfig.EMPTY_INLINKS),
+//                new TextCellArrayWritable(emptyInlinkArr),
+//                PagerankConfig.OUTPUT_INLINKS + "/"
+//        );
 
         System.out.println("counter1: " + counter1);
 
@@ -159,15 +159,16 @@ public class LinkNameMapReducer extends Reducer<GraphKeyWritable,
                 new IntWritable(PagerankConfig.DANGLING_NAME_INT),
                 PagerankConfig.OUTPUT_LINKMAP + "/"
         );
-
-        multipleOutput.write(
-                PagerankConfig.OUTPUT_LINKMAP,
-                new Text(PagerankConfig.EMPTY_INLINKS),
-                new IntWritable(PagerankConfig.EMPTY_INLINKS_INT),
-                PagerankConfig.OUTPUT_LINKMAP + "/"
-        );
+//
+//        multipleOutput.write(
+//                PagerankConfig.OUTPUT_LINKMAP,
+//                new Text(PagerankConfig.EMPTY_INLINKS),
+//                new IntWritable(PagerankConfig.EMPTY_INLINKS_INT),
+//                PagerankConfig.OUTPUT_LINKMAP + "/"
+//        );
 
         multipleOutput.close();
+//        PriorityQueue
     }
 
 
