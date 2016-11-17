@@ -13,6 +13,8 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 
+import java.net.URI;
+
 /**
  * Created by kingkz on 11/11/16.
  */
@@ -23,6 +25,7 @@ public class MatricesGenerator {
     public static void preprocess(Configuration conf, Path input) throws
             Exception {
         getLinkMap(conf, input);
+        writeMappedGraph(conf);
     }
 
 
@@ -43,9 +46,11 @@ public class MatricesGenerator {
         FileInputFormat.addInputPath(job, path);
         FileInputFormat.setInputDirRecursive(job, true);
 
-        Path linksOutput = new Path(PagerankConfig.TEMP_ROOT);
+        Path linksOutput = Utils.getPathInTemp(conf, "");
 
         Utils.CheckOutputPath(conf, linksOutput);
+
+        System.out.println(linksOutput.toString());
 
         MultipleOutputs.addNamedOutput(
                         job,
@@ -98,7 +103,6 @@ public class MatricesGenerator {
                         .getValue()),
                 conf);
 
-        writeMappedGraph(conf);
     }
 
     public static void writeMappedGraph(Configuration conf) throws
@@ -109,10 +113,17 @@ public class MatricesGenerator {
         job.setMapOutputKeyClass(IntWritable.class);
         job.setMapOutputValueClass(CellArrayWritable.class);
 
-        if (conf.get(PagerankConfig.URI_ROOT) != null) {
-            job.addCacheFile(Utils.getPathInTemp(PagerankConfig.OUTPUT_LINKMAP)
-                    .toUri());
-        }
+        URI links = new URI(conf.get(PagerankConfig.OUTPUT_WORKING_DIRECTORY) +
+                "/" +
+                Utils.getPathInTemp(conf,
+                        PagerankConfig
+                                .OUTPUT_LINKMAP + "/-r-00000")
+                        .toString());
+
+//        if (conf.get(PagerankConfig.URI_ROOT) != null) {
+//            System.out.println("adding cache: " + links.toString());
+//            job.addCacheFile(links);
+//        }
 
         job.setJarByClass(MatricesGenerator.class);
 //        job.setReducerClass(NameToNumberReducer.class);
@@ -120,21 +131,21 @@ public class MatricesGenerator {
 
         MultipleInputs.addInputPath(
                 job,
-                Utils.getPathInTemp(PagerankConfig.OUTPUT_OUTLINKS),
+                Utils.getPathInTemp(conf, PagerankConfig.OUTPUT_OUTLINKS),
                 SequenceFileInputFormat.class,
                 NameToNumberMapper.class
         );
 
         MultipleInputs.addInputPath(
                 job,
-                Utils.getPathInTemp(PagerankConfig.OUTPUT_INLINKS),
+                Utils.getPathInTemp(conf, PagerankConfig.OUTPUT_INLINKS),
                 SequenceFileInputFormat.class,
                 NameToNumberMapper.class
         );
 
-        Utils.CheckOutputPath(conf, Utils.getPathInTemp(PagerankConfig
+        Utils.CheckOutputPath(conf, Utils.getPathInTemp(conf, PagerankConfig
                 .OUTPUT_INLINKS_MAPPED));
-        Utils.CheckOutputPath(conf, Utils.getPathInTemp(PagerankConfig
+        Utils.CheckOutputPath(conf, Utils.getPathInTemp(conf, PagerankConfig
                 .OUTPUT_OUTLINKS_MAPPED));
 
         MultipleOutputs.addNamedOutput(
@@ -153,7 +164,7 @@ public class MatricesGenerator {
                 CellArrayWritable.class
         );
 
-        Path output = new Path(Utils.getPathInTemp(PagerankConfig
+        Path output = new Path(Utils.getPathInTemp(conf, PagerankConfig
                 .MAPPED_OUTPUT).toString());
         Utils.CheckOutputPath(conf, output);
         job.setOutputFormatClass(SequenceFileOutputFormat.class);

@@ -12,10 +12,8 @@ import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.net.URISyntaxException;
+import java.util.*;
 
 /**
  * Created by kingkz on 11/15/16.
@@ -25,48 +23,70 @@ public class NameToNumberMapper extends Mapper<GraphKeyWritable, TextCellArrayWr
 
     private Map<String, Integer> linknameMap;
     private MultipleOutputs mos;
+//    private IntWritable randomkey;
+//    private Random random;
 
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
         super.setup(context);
 
-        linknameMap = readLinkMap(context);
+        try {
+            linknameMap = readLinkMap(context);
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
+        if (linknameMap == null) {
+            throw new IOException("can not find linkmap");
+        }
         mos = new MultipleOutputs<>(context);
+//        randomkey = new IntWritable();
+//        random = new Random();
     }
 
-    private Map<String, Integer> readLinkMap(Context context) throws IOException {
+    private Map<String, Integer> readLinkMap(Context context) throws IOException, URISyntaxException {
         URI[] uriArray = context.getCacheFiles();
+//        if (uriArray.length == 0) {
+//            throw new IOException("Empty Cache Files");
+//        }
+//
+//        String path;
+//        if (uriArray != null) {
+//            System.out.println(uriArray.length);
+//            for (URI uri : uriArray) {
+//                System.out.println(uri.toString() + "contains: " + uri
+//                        .toString().contains(PagerankConfig.OUTPUT_LINKMAP));
+//                if (uri.toString().contains(PagerankConfig.OUTPUT_LINKMAP)) {
+//                    path = uri.getPath();
 
-        String path = null;
-        if (uriArray != null) {
-            for (URI uri : uriArray) {
-                if (uri.getPath().contains(PagerankConfig.OUTPUT_LINKMAP)) {
-                    path = uri.getPath();
-                    break;
-                }
-            }
-        }
+        URI links = new URI(context.getConfiguration().get(PagerankConfig.OUTPUT_WORKING_DIRECTORY) +
+                "/" +
+                Utils.getPathInTemp(context.getConfiguration(),
+                        PagerankConfig
+                                .OUTPUT_LINKMAP + "/-r-00000")
+                        .toString());
+                    System.out.println("found cache");
 
-        if (path == null) {
-            path = Utils.getPathInTemp(PagerankConfig.OUTPUT_LINKMAP).toString();
-        }
+                    SequenceFile.Reader reader = new SequenceFile.Reader(context
+                            .getConfiguration(), SequenceFile.Reader.file
+                            (new Path(links)));
 
-        SequenceFile.Reader reader = new SequenceFile.Reader(context
-                .getConfiguration(), SequenceFile.Reader.file
-                (new Path(path+"/-r-00000")));
-
-        Map<String, Integer> map = new HashMap<>();
-        while (true) {
-            Text key = new Text();
-            IntWritable value = new IntWritable();
-
-            if (!reader.next(key, value)) {
-                break;
-            }
-            map.put(key.toString(), value.get());
-        }
-
-        return map;
+                    Map<String, Integer> map = new HashMap<>();
+                    Text key = new Text();
+                    IntWritable value = new IntWritable();
+                    while (true) {
+                        if (!reader.next(key, value)) {
+                            break;
+                        }
+                        map.put(key.toString(), value.get());
+                    }
+                    System.out.println("map size" + map.size());
+                    return map;
+//                }
+//            }
+//        } else {
+//            System.out.println("empty uriArray");
+//        }
+//        return null;
     }
 
     @Override
@@ -77,9 +97,11 @@ public class NameToNumberMapper extends Mapper<GraphKeyWritable, TextCellArrayWr
 
         for (Writable w : value.get()) {
             TextCellWritable textCell = (TextCellWritable) w;
+//            randomkey.set(random.nextInt());
             list.add(
                     new CellWritable(
                             linknameMap.get(textCell.getRowcol()),
+//                            random.nextInt(),
                             textCell.getValue()
                     )
             );
@@ -87,16 +109,20 @@ public class NameToNumberMapper extends Mapper<GraphKeyWritable, TextCellArrayWr
 
         try {
             if (key.getType() == PagerankConfig.OUTLINK_TYPE) {
+//                randomkey.set(random.nextInt());
                 mos.write(
                         PagerankConfig.OUTPUT_OUTLINKS_MAPPED,
                         new IntWritable(linknameMap.get(key.getName())),
+//                        randomkey,
                         new CellArrayWritable(list),
                         PagerankConfig.OUTPUT_OUTLINKS_MAPPED + "/"
                 );
             } else {
+//                randomkey.set(random.nextInt());
                 mos.write(
                         PagerankConfig.OUTPUT_INLINKS_MAPPED,
                         new IntWritable(linknameMap.get(key.getName())),
+//                        randomkey,
                         new CellArrayWritable(list),
                         PagerankConfig.OUTPUT_INLINKS_MAPPED + "/"
                 );

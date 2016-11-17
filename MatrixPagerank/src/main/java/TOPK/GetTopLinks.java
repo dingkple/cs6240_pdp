@@ -3,6 +3,7 @@ package TOPK;
 import Config.PagerankConfig;
 import Util.Utils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.IntWritable;
@@ -32,7 +33,8 @@ public class GetTopLinks {
 
         Path pagerankInput;
 
-        pagerankInput = Utils.getPathInTemp(PagerankConfig.OUTPUT_PAGERANK + "11");
+        pagerankInput = Utils.getPathInTemp(conf, PagerankConfig
+                .OUTPUT_PAGERANK + "11");
 
         MultipleInputs.addInputPath(
                 job,
@@ -83,5 +85,9 @@ public class GetTopLinks {
 
         System.out.println(" temp/pagerankvalue1/-r-00000".contains
                 (PagerankConfig.OUTPUT_PAGERANK+1));
+
+        System.out.println(conf.get("fs.defaultFS"));
+
+
     }
 }

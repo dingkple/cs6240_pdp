@@ -10,6 +10,7 @@ import org.apache.hadoop.mapreduce.Mapper;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -63,47 +64,56 @@ public class ByRowMapper extends Mapper<IntWritable, CellArrayWritable,
         } catch (Exception e) {
             e.printStackTrace();
             System.out.println("Error reading pagerankvalues");
-            throw new IOException("by row mapper serup");
+            throw new IOException("by row mapper setup");
         }
     }
 
 
     private Map<Integer, Double> readPagerankValue(Context context) throws
-            IOException {
-        URI[] uriArray = context.getCacheFiles();
+            IOException, URISyntaxException {
+//        URI[] uriArray = context.getCacheFiles();
+//
+//        URI path = null;
+//        if (uriArray != null) {
+//            for (URI uri : uriArray) {
+//                System.out.println("current checking uri: " + uri.toString());
+//                System.out.println("pagerankdir: " + PagerankConfig
+//                        .OUTPUT_PAGERANK + iterNumber);
+//                System.out.println(uri.toString().contains(PagerankConfig
+//                        .OUTPUT_PAGERANK + iterNumber));
+//                if (uri.toString().contains(PagerankConfig
+//                        .OUTPUT_PAGERANK + iterNumber)) {
+//                    path = uri;
+//                    System.out.println("Im not NULL: !!!" + path);
+//                    break;
+//                }
+//            }
+//        }
 
-        URI path = null;
-        if (uriArray != null) {
-            for (URI uri : uriArray) {
-                System.out.println("current checking uri: " + uri.toString());
-                System.out.println("pagerankdir: " + PagerankConfig
-                        .OUTPUT_PAGERANK + iterNumber);
-                System.out.println(uri.toString().contains(PagerankConfig
-                        .OUTPUT_PAGERANK + iterNumber));
-                if (uri.toString().contains(PagerankConfig
-                        .OUTPUT_PAGERANK + iterNumber)) {
-                    path = uri;
-                    System.out.println("Im not NULL: !!!" + path);
-                    break;
-                }
-            }
+//        if (path == null) {
+//            String pathStr = PagerankConfig
+//                    .OUTPUT_PAGERANK +
+//                    iterNumber;
+//            if (iterNumber == 1) {
+//                pathStr += "/-r-00000";
+//            } else {
+//                pathStr += "/part-r-00000";
+//            }
+//            path = Utils.getPathInTemp(context.getConfiguration(), pathStr).toUri();
+//        }
+
+//
+//        System.out.println("final path: " + path);
+        String pathStr = context.getConfiguration().get(PagerankConfig
+                .OUTPUT_WORKING_DIRECTORY) + "/" + Utils.getPathInTemp(context
+                .getConfiguration(), PagerankConfig
+                .OUTPUT_PAGERANK+iterNumber);
+        if (iterNumber == 1) {
+            pathStr += "/-r-00000";
+        } else {
+            pathStr += "/part-r-00000";
         }
-
-        if (path == null) {
-            String pathStr = PagerankConfig
-                    .OUTPUT_PAGERANK +
-                    iterNumber;
-            if (iterNumber == 1) {
-                pathStr += "/-r-00000";
-            } else {
-                pathStr += "/part-r-00000";
-            }
-            path = Utils.getPathInTemp(pathStr).toUri();
-        }
-
-        System.out.println("final path: " + path);
-
-        Path pagerankPath = new Path(path);
+        Path pagerankPath = new Path(new URI(pathStr));
         System.out.println("final: " + pagerankPath.toString());
 
         SequenceFile.Reader reader = new SequenceFile.Reader(context

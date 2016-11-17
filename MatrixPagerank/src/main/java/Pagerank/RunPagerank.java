@@ -1,7 +1,10 @@
 package Pagerank;
 
 import Config.PagerankConfig;
-import Multiplication.*;
+import Multiplication.ByRowMapper;
+import Multiplication.ByRowReducer;
+import Multiplication.PagerankByColMapper;
+import Multiplication.PagerankByColReducer;
 import Preprocess.MatricesGenerator;
 import Util.Utils;
 import org.apache.hadoop.conf.Configuration;
@@ -11,14 +14,12 @@ import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
-import org.apache.hadoop.mapreduce.lib.input.MultipleInputs;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
 import java.io.IOException;
-import java.net.URI;
 
 import static TOPK.GetTopLinks.showTop;
 
@@ -31,8 +32,6 @@ public class RunPagerank {
     private static void iterationWithPartitionByRowCol(Configuration conf,
                                                        boolean isByRow) throws
             Exception {
-        //todo
-
         long numberOfLinks = Long.valueOf(Utils
                 .readData(PagerankConfig.NUMBER_OF_LINKS, conf));
         conf.setLong(PagerankConfig.NUMBER_OF_LINKS, numberOfLinks);
@@ -48,53 +47,58 @@ public class RunPagerank {
                 conf.setDouble(PagerankConfig.DANGLING_NAME, last);
             }
 
-            conf.setInt(PagerankConfig.ITER_NUM, i);
-            Job job = Job.getInstance(conf);
-
+            Job job = Job.getInstance(conf, "iteration" + i);
             job.setJarByClass(RunPagerank.class);
 
             Path output;
             if (!isByRow) {
-                MultipleInputs.addInputPath(
-                        job,
-                        Utils.getPathInTemp(PagerankConfig.MAPPED_OUTPUT + "/" +
-                                PagerankConfig.OUTPUT_OUTLINKS_MAPPED),
-                        SequenceFileInputFormat.class,
-                        ByRowMapper.class
-                );
-
+//                MultipleInputs.addInputPath(
+//                        job,
+//                        Utils.getPathInTemp(PagerankConfig.MAPPED_OUTPUT + "/" +
+//                                PagerankConfig.OUTPUT_OUTLINKS_MAPPED),
+//                        SequenceFileInputFormat.class,
+//                        ByRowMapper.class
+//                );
+                FileInputFormat.addInputPath(job, Utils.getPathInTemp
+                        (conf, PagerankConfig.MAPPED_OUTPUT + "/" +
+                                PagerankConfig.OUTPUT_OUTLINKS_MAPPED));
             } else {
-                MultipleInputs.addInputPath(
-                        job,
-                        Utils.getPathInTemp(PagerankConfig.MAPPED_OUTPUT + "/" +
-                                PagerankConfig.OUTPUT_INLINKS_MAPPED),
-                        SequenceFileInputFormat.class,
-                        ByRowMapper.class
-                );
+//                MultipleInputs.addInputPath(
+//                        job,
+//                        Utils.getPathInTemp(PagerankConfig.MAPPED_OUTPUT + "/" +
+//                                PagerankConfig.OUTPUT_INLINKS_MAPPED),
+//                        SequenceFileInputFormat.class,
+//                        ByRowMapper.class
+//                );
+                FileInputFormat.addInputPath(job, Utils.getPathInTemp
+                        (conf, PagerankConfig.MAPPED_OUTPUT + "/" +
+                                PagerankConfig.OUTPUT_INLINKS_MAPPED));
 
             }
-            output = Utils.getPathInTemp(
+            output = Utils.getPathInTemp(conf,
                     PagerankConfig.OUTPUT_PAGERANK + String.valueOf(i+1)
             );
 
-            if (conf.get(PagerankConfig.URI_ROOT) != null) {
-                String path = PagerankConfig
-                        .OUTPUT_PAGERANK + String.valueOf(i);
-                if (i == 1) {
-                    path += "/-r-00000";
-                } else {
-                    path += "/part-r-00000";
-                }
-                job.addCacheFile(new URI(path));
+            String path = Utils.getPathInTemp(conf, PagerankConfig
+                    .OUTPUT_PAGERANK + String.valueOf(i)).toString();
+            if (i == 1) {
+                path += "/-r-00000";
+            } else {
+                path += "/part-r-00000";
             }
+            System.out.println("adding cachefile: " + path);
+//            job.addCacheFile(new URI(conf.get(PagerankConfig
+//                    .OUTPUT_WORKING_DIRECTORY) + "/" + path));
 
             job.setMapOutputKeyClass(IntWritable.class);
             job.setMapOutputValueClass(DoubleWritable.class);
             job.setOutputKeyClass(IntWritable.class);
             job.setOutputValueClass(DoubleWritable.class);
 
+            job.setMapperClass(ByRowMapper.class);
             job.setReducerClass(ByRowReducer.class);
             job.setNumReduceTasks(1);
+            job.setInputFormatClass(SequenceFileInputFormat.class);
             job.setOutputFormatClass(SequenceFileOutputFormat.class);
 
             Utils.CheckOutputPath(conf, output);
@@ -123,13 +127,15 @@ public class RunPagerank {
         job.setOutputValueClass(DoubleWritable.class);
 
         Path input = Utils.getPathInTemp
-                (PagerankConfig.OUTPUT_PAGERANK + String.valueOf(2 * iter));
+                (conf, PagerankConfig.OUTPUT_PAGERANK + String.valueOf(2 *
+                        iter));
         FileInputFormat.addInputPath(job, input);
         job.setOutputFormatClass(SequenceFileOutputFormat.class);
         job.setInputFormatClass(SequenceFileInputFormat.class);
 
         Path output = Utils.getPathInTemp
-                (PagerankConfig.OUTPUT_PAGERANK + String.valueOf(2 * iter+1));
+                (conf, PagerankConfig.OUTPUT_PAGERANK + String.valueOf(2 *
+                        iter+1));
 
         Utils.CheckOutputPath(conf, output);
         FileOutputFormat.setOutputPath(job, output);
@@ -146,6 +152,13 @@ public class RunPagerank {
 
         Configuration conf = new Configuration();
         String[] otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
+
+        if (conf.get(PagerankConfig.URI_ROOT) == null) {
+            Path p = new Path("test");
+            FileSystem fs = p.getFileSystem(conf);
+            conf.set(PagerankConfig.OUTPUT_WORKING_DIRECTORY, String.valueOf(fs.getWorkingDirectory
+                    ()));
+        }
 
         Path input;
 

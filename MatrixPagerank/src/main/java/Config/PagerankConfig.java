@@ -29,6 +29,7 @@ public class PagerankConfig {
     public static final String MAPPED_OUTPUT = "mappedoutput";
     public static final int DANGLING_NAME_INT = -1;
     public static final int EMPTY_INLINKS_INT = -2;
+    public static final java.lang.String OUTPUT_WORKING_DIRECTORY = "workingdirectory";
     public static Long KEY_TYEP_ROW = 1L;
     public static int PR_BLOCK_SIZE = 5000;
     public static Long ROWCOL_BLOCK_SIZE_LONG = 5000000L;

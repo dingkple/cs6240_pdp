@@ -76,7 +76,8 @@ public class MatricesMapper extends Mapper<IntWritable, Writable,
         }
 
         if (path == null) {
-            path = Utils.getPathInTemp(PagerankConfig.OUTPUT_PAGERANK +
+            path = Utils.getPathInTemp(context.getConfiguration(), PagerankConfig
+                    .OUTPUT_PAGERANK +
                     iterNumber)
                     .toString();
         }

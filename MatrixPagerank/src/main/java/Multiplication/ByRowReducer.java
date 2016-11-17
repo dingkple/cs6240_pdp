@@ -57,7 +57,8 @@ public class ByRowReducer extends Reducer<IntWritable, DoubleWritable,
             } else {
                 pathStr += "/part-r-00000";
             }
-            path = Utils.getPathInTemp(pathStr).toUri();
+            path = Utils.getPathInTemp(context.getConfiguration(), pathStr)
+                    .toUri();
         }
 
 

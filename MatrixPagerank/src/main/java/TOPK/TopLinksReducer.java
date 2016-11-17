@@ -47,7 +47,9 @@ public class TopLinksReducer
         }
 
         if (path == null) {
-            path = Utils.getPathInTemp(PagerankConfig.OUTPUT_LINKMAP).toString();
+            path = Utils.getPathInTemp(context.getConfiguration(),
+                    PagerankConfig.OUTPUT_LINKMAP)
+                    .toString();
         }
 
         SequenceFile.Reader reader = new SequenceFile.Reader(context
