@@ -2,6 +2,8 @@ package Preprocess;
 
 import Config.PagerankConfig;
 import Util.Utils;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.SequenceFile;
@@ -58,36 +60,59 @@ public class NameToNumberMapper extends Mapper<GraphKeyWritable, TextCellArrayWr
 //                if (uri.toString().contains(PagerankConfig.OUTPUT_LINKMAP)) {
 //                    path = uri.getPath();
 
-        URI links = new URI(context.getConfiguration().get(PagerankConfig.OUTPUT_WORKING_DIRECTORY) +
+//        String basedir = context.getConfiguration().get(PagerankConfig
+//                .OUTPUT_WORKING_DIRECTORY) +
+//                "/" +
+//        Utils.getPathInTemp(context.getConfiguration(),
+//                PagerankConfig
+//                        .OUTPUT_LINKMAP + "/-r-00000")
+//                .toString();
+        String basedir = context.getConfiguration().get(PagerankConfig
+                .OUTPUT_WORKING_DIRECTORY) +
                 "/" +
                 Utils.getPathInTemp(context.getConfiguration(),
                         PagerankConfig
-                                .OUTPUT_LINKMAP + "/-r-00000")
-                        .toString());
-                    System.out.println("found cache");
+                                .OUTPUT_LINKMAP)
+                        .toString();
+        System.out.println("found cache");
+        FileSystem fs = FileSystem.get(new URI(context.getConfiguration().get
+                (PagerankConfig.OUTPUT_WORKING_DIRECTORY)), context
+                .getConfiguration());
 
-                    SequenceFile.Reader reader = new SequenceFile.Reader(context
-                            .getConfiguration(), SequenceFile.Reader.file
-                            (new Path(links)));
-
-                    Map<String, Integer> map = new HashMap<>();
-                    Text key = new Text();
-                    IntWritable value = new IntWritable();
-                    while (true) {
-                        if (!reader.next(key, value)) {
-                            break;
-                        }
-                        map.put(key.toString(), value.get());
-                    }
-                    System.out.println("map size" + map.size());
-                    return map;
+        Map<String, Integer> nameMap = new HashMap<>();
+        for (FileStatus file : fs.listStatus(new Path(basedir))) {
+            readNameMap(file.getPath(), nameMap, context);
+        }
 //                }
 //            }
 //        } else {
 //            System.out.println("empty uriArray");
 //        }
 //        return null;
+        nameMap.put(PagerankConfig.DANGLING_NAME, PagerankConfig
+                .DANGLING_NAME_INT);
+        nameMap.put(PagerankConfig.EMPTY_INLINKS, PagerankConfig
+                .EMPTY_INLINKS_INT);
+        return nameMap;
     }
+
+    private void readNameMap(Path path, Map<String, Integer> nameMap, Context context) throws IOException {
+        SequenceFile.Reader reader = new SequenceFile.Reader(context
+                .getConfiguration(), SequenceFile.Reader.file
+                (path));
+
+        Text key = new Text();
+        IntWritable value = new IntWritable();
+        while (true) {
+            if (!reader.next(key, value)) {
+                reader.close();
+                break;
+            }
+            nameMap.put(key.toString(), value.get());
+        }
+        System.out.println("map size" + nameMap.size());
+    }
+
 
     @Override
     protected void map(GraphKeyWritable key, TextCellArrayWritable value, Context context)

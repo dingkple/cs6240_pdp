@@ -77,10 +77,10 @@ public class LinkNameMapMapper extends Mapper<LongWritable, Text, GraphKeyWritab
                                 outlinks,
                                 GraphKeyWritable.class
                         )));
-//                context.write(new GraphKeyWritable(PagerankConfig.INLINK_TYPE,
-//                        pageName),
-//                        new GraphKeyArrayWritable());
-//
+                context.write(new GraphKeyWritable(PagerankConfig.INLINK_TYPE,
+                        pageName),
+                        new GraphKeyArrayWritable());
+
                 context.write(new GraphKeyWritable(PagerankConfig.LINK_MAP_TYPE,
                         pageName),
                         new GraphKeyArrayWritable());
@@ -108,10 +108,10 @@ public class LinkNameMapMapper extends Mapper<LongWritable, Text, GraphKeyWritab
                             name),
                     new GraphKeyArrayWritable()
                     );
-//
-//
-//            context.write(new GraphKeyWritable(PagerankConfig.OUTLINK_TYPE,
-//                    name), new GraphKeyArrayWritable());
+
+
+            context.write(new GraphKeyWritable(PagerankConfig.OUTLINK_TYPE,
+                    name), new GraphKeyArrayWritable());
         }
     }
 }

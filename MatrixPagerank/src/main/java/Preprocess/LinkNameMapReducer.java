@@ -10,7 +10,6 @@ import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.PriorityQueue;
 
 /**
  * Created by kingkz on 11/11/16.
@@ -26,6 +25,9 @@ public class LinkNameMapReducer extends Reducer<GraphKeyWritable,
     private List<TextCellWritable> emptyInlinks;
     private double counter2 = 0;
     private double counter3 = 0;
+    private int reducerID;
+    private int inReducerCounter;
+    private int numberOfReducers;
 
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
@@ -36,6 +38,10 @@ public class LinkNameMapReducer extends Reducer<GraphKeyWritable,
         emptyInlinks = new ArrayList<>();
         counter1 = 0;
         counter3 = 0;
+        reducerID = -1;
+
+        inReducerCounter = 0;
+        numberOfReducers = PagerankConfig.NUMBER_OF_REDUCERS_INT;
     }
 
     @Override
@@ -74,6 +80,25 @@ public class LinkNameMapReducer extends Reducer<GraphKeyWritable,
             } else {
                 danglings.add(new TextCellWritable(key.getName(), 1.0));
             }
+
+//            linkCounter.increment(1);
+//            int linkId = inReducerCounter * numberOfReducers + reducerID;
+//            inReducerCounter += 1;
+//            multipleOutput.write(
+//                    PagerankConfig.OUTPUT_LINKMAP,
+//                    new Text(key.getName()),
+//                    new Text(String.valueOf(linkId)),
+//                    PagerankConfig.OUTPUT_LINKMAP + "/"
+//            );
+//
+//            multipleOutput.write(
+//                    PagerankConfig.OUTPUT_PAGERANK,
+//                    new IntWritable(linkId),
+//                    new DoubleWritable(0.0),
+//                    PagerankConfig.OUTPUT_PAGERANK + "1/"
+//            );
+
+
         } else if (key.getType() == PagerankConfig.INLINK_TYPE) {
             if (links.get().length > 0) {
 
@@ -90,6 +115,8 @@ public class LinkNameMapReducer extends Reducer<GraphKeyWritable,
             }
         } else {
             linkCounter.increment(1);
+
+
             multipleOutput.write(
                     PagerankConfig.OUTPUT_LINKMAP,
                     new Text(key.getName()),
@@ -115,57 +142,59 @@ public class LinkNameMapReducer extends Reducer<GraphKeyWritable,
 
         TextCellWritable[] emptyInlinkArr = Iterables.toArray(emptyInlinks,
                 TextCellWritable.class);
-//        multipleOutput.write(
-//                PagerankConfig.OUTPUT_OUTLINKS,
-//                new GraphKeyWritable(
-//                        PagerankConfig.OUTLINK_TYPE,
-//                        PagerankConfig.DANGLING_NAME),
-//                new TextCellArrayWritable(danglingArr),
-//                PagerankConfig.OUTPUT_OUTLINKS + "/"
-//        );
+        multipleOutput.write(
+                PagerankConfig.OUTPUT_OUTLINKS,
+                new GraphKeyWritable(
+                        PagerankConfig.OUTLINK_TYPE,
+                        PagerankConfig.DANGLING_NAME),
+                new TextCellArrayWritable(danglingArr),
+                PagerankConfig.OUTPUT_OUTLINKS + "/"
+        );
+
+        multipleOutput.write(
+                PagerankConfig.OUTPUT_INLINKS,
+                new GraphKeyWritable(
+                        PagerankConfig.INLINK_TYPE,
+                        PagerankConfig.DANGLING_NAME),
+                new TextCellArrayWritable(danglingArr),
+                PagerankConfig.OUTPUT_INLINKS + "/"
+        );
 //
-//        multipleOutput.write(
-//                PagerankConfig.OUTPUT_INLINKS,
-//                new GraphKeyWritable(
-//                        PagerankConfig.INLINK_TYPE,
-//                        PagerankConfig.DANGLING_NAME),
-//                new TextCellArrayWritable(danglingArr),
-//                PagerankConfig.OUTPUT_INLINKS + "/"
-//        );
+        multipleOutput.write(
+                PagerankConfig.OUTPUT_OUTLINKS,
+                new GraphKeyWritable(
+                        PagerankConfig.OUTLINK_TYPE,
+                        PagerankConfig.EMPTY_INLINKS),
+                new TextCellArrayWritable(emptyInlinkArr),
+                PagerankConfig.OUTPUT_OUTLINKS + "/"
+        );
 //
-//        multipleOutput.write(
-//                PagerankConfig.OUTPUT_OUTLINKS,
-//                new GraphKeyWritable(
-//                        PagerankConfig.OUTLINK_TYPE,
-//                        PagerankConfig.EMPTY_INLINKS),
-//                new TextCellArrayWritable(emptyInlinkArr),
-//                PagerankConfig.OUTPUT_OUTLINKS + "/"
-//        );
-//
-//        multipleOutput.write(
-//                PagerankConfig.OUTPUT_INLINKS,
-//                new GraphKeyWritable(
-//                        PagerankConfig.INLINK_TYPE,
-//                        PagerankConfig.EMPTY_INLINKS),
-//                new TextCellArrayWritable(emptyInlinkArr),
-//                PagerankConfig.OUTPUT_INLINKS + "/"
-//        );
+        multipleOutput.write(
+                PagerankConfig.OUTPUT_INLINKS,
+                new GraphKeyWritable(
+                        PagerankConfig.INLINK_TYPE,
+                        PagerankConfig.EMPTY_INLINKS),
+                new TextCellArrayWritable(emptyInlinkArr),
+                PagerankConfig.OUTPUT_INLINKS + "/"
+        );
 
         System.out.println("counter1: " + counter1);
 
-//        multipleOutput.write(
-//                PagerankConfig.OUTPUT_LINKMAP,
-//                new Text(PagerankConfig.DANGLING_NAME),
-//                new IntWritable(PagerankConfig.DANGLING_NAME_INT),
-//                PagerankConfig.OUTPUT_LINKMAP + "/"
-//        );
-//
-//        multipleOutput.write(
-//                PagerankConfig.OUTPUT_LINKMAP,
-//                new Text(PagerankConfig.EMPTY_INLINKS),
-//                new IntWritable(PagerankConfig.EMPTY_INLINKS_INT),
-//                PagerankConfig.OUTPUT_LINKMAP + "/"
-//        );
+        if (reducerID == 0) {
+            multipleOutput.write(
+                    PagerankConfig.OUTPUT_LINKMAP,
+                    new Text(PagerankConfig.DANGLING_NAME),
+                    new IntWritable(PagerankConfig.DANGLING_NAME_INT),
+                    PagerankConfig.OUTPUT_LINKMAP + "/"
+            );
+
+            multipleOutput.write(
+                    PagerankConfig.OUTPUT_LINKMAP,
+                    new Text(PagerankConfig.EMPTY_INLINKS),
+                    new IntWritable(PagerankConfig.EMPTY_INLINKS_INT),
+                    PagerankConfig.OUTPUT_LINKMAP + "/"
+            );
+        }
 
         multipleOutput.close();
 //        PriorityQueue

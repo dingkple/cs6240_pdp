@@ -114,7 +114,7 @@ public class Utils {
 //            conf.set(PagerankConfig.OUTPUT_WORKING_DIRECTORY, String.valueOf(fs.getWorkingDirectory
 //                    ()));
 //        }
-        return new Path(conf.get(PagerankConfig.TEMP_ROOT) + "/" + key);
+        return new Path(PagerankConfig.TEMP_ROOT + "/" + key);
     }
 
     public static void CheckOutputPath(Configuration conf, Path path) throws IOException, URISyntaxException {

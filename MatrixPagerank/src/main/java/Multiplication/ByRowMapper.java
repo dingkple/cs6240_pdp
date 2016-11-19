@@ -4,6 +4,8 @@ import Config.PagerankConfig;
 import Preprocess.CellArrayWritable;
 import Preprocess.CellWritable;
 import Util.Utils;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -108,40 +110,57 @@ public class ByRowMapper extends Mapper<IntWritable, CellArrayWritable,
                 .OUTPUT_WORKING_DIRECTORY) + "/" + Utils.getPathInTemp(context
                 .getConfiguration(), PagerankConfig
                 .OUTPUT_PAGERANK+iterNumber);
-        if (iterNumber == 1) {
-            pathStr += "/-r-00000";
-        } else {
-            pathStr += "/part-r-00000";
+//        if (iterNumber == 1) {
+//            pathStr += "/-r-00000";
+//        } else {
+//            pathStr += "/part-r-00000";
+//        }
+
+        Map<Integer, Double> pagerank = new HashMap<>();
+
+        FileSystem fs = FileSystem.get(new URI(context.getConfiguration().get
+                (PagerankConfig.OUTPUT_WORKING_DIRECTORY)), context
+                .getConfiguration());
+
+        for (FileStatus file : fs.listStatus(new Path(pathStr))) {
+            if (file.getPath().getName().startsWith("-r") ||
+                    file.getPath().getName().startsWith("part"))
+            readFileToMap(file.getPath(), pagerank, context);
         }
-        Path pagerankPath = new Path(new URI(pathStr));
-        System.out.println("final: " + pagerankPath.toString());
+
+        return pagerank;
+    }
+
+
+    public Map<Integer, Double> readFileToMap(Path path, Map<Integer, Double> pagerank, Context
+            context) throws IOException {
+        System.out.println("final: " + path.toString());
 
         SequenceFile.Reader reader = new SequenceFile.Reader(context
                 .getConfiguration(), SequenceFile.Reader.file
-                (pagerankPath));
-
-        Map<Integer, Double> map = new HashMap<>();
+                (path));
         while (true) {
             IntWritable key = new IntWritable();
             DoubleWritable value = new DoubleWritable();
 
             if (!reader.next(key, value)) {
+                reader.close();
                 break;
             }
             double v;
             if (iterNumber == 1) {
                 v = 1.0 / numberOfLinks;
             } else {
-                v = (lastDanglingSum/numberOfLinks + value.get()) * 0.85 + 0.15 /
-                        numberOfLinks;
+                v = (lastDanglingSum/numberOfLinks + value.get()) * 0.85 +
+                        0.15 / numberOfLinks;
             }
 
             counter += v;
 
-            map.put(key.get(), v);
+            pagerank.put(key.get(), v);
         }
 
-        return map;
+        return pagerank;
     }
 
     private void calculateValueByRow(int rowId, CellArrayWritable cells)
@@ -150,24 +169,34 @@ public class ByRowMapper extends Mapper<IntWritable, CellArrayWritable,
         for (Writable cell : cells.get()) {
             CellWritable c = (CellWritable) cell;
 
-            if (!pagerankValueMap.containsKey(rowId))
-                pagerankValueMap.put(rowId, 0.0);
-
-            if (pagerankMap.containsKey(c.getRowcol())) {
-                double change = c.getValue() * pagerankMap.get(c.getRowcol());
-                pagerankValueMap.put(
-                        rowId,
-                        pagerankValueMap.get(rowId)
-                                + change);
+            if (rowId == PagerankConfig.EMPTY_INLINKS_INT) {
+                pagerankValueMap.put(c.getRowcol(), 0.0);
             } else {
-                System.out.println("fuck");
+
+                if (!pagerankValueMap.containsKey(rowId))
+                    pagerankValueMap.put(rowId, 0.0);
+
+                if (pagerankMap.containsKey(c.getRowcol())) {
+                    double change = c.getValue() * pagerankMap.get(c.getRowcol());
+                    pagerankValueMap.put(
+                            rowId,
+                            pagerankValueMap.get(rowId)
+                                    + change);
+                } else {
+                    System.out.println("fuck");
+                }
             }
         }
     }
 
 
     private void calculateByCol(int rowId, CellArrayWritable cells) {
-        if (rowId == PagerankConfig.DANGLING_NAME_INT) {
+        if (rowId == PagerankConfig.EMPTY_INLINKS_INT) {
+            for (Writable w : cells.get()) {
+                CellWritable cell = (CellWritable) w;
+                pagerankValueMap.put(cell.getRowcol(), 0.0);
+            }
+        } else if (rowId == PagerankConfig.DANGLING_NAME_INT) {
             double v = 0;
             if (!pagerankValueMap.containsKey(rowId))
                 pagerankValueMap.put(rowId, 0.0);
@@ -179,6 +208,7 @@ public class ByRowMapper extends Mapper<IntWritable, CellArrayWritable,
         } else {
             for (Writable cell : cells.get()) {
                 CellWritable c = (CellWritable) cell;
+
                 if (!pagerankValueMap.containsKey(c.getRowcol())) {
                     pagerankValueMap.put(c.getRowcol(), 0.0);
                 }

@@ -179,13 +179,13 @@ public class RunPagerank {
             conf.set(PagerankConfig.FINAL_OUTPUT, "output");
         }
 
-
-        long start = System.nanoTime();
+//
+//        long start = System.nanoTime();
         MatricesGenerator.preprocess(conf, input);
-        long preprocess = System.nanoTime();
-        iterationWithPartitionByRowCol(conf, true);
-        long iteration = System.nanoTime();
-        showTop(conf, true);
+//        long preprocess = System.nanoTime();
+//        iterationWithPartitionByRowCol(conf, true);
+//        long iteration = System.nanoTime();
+//        showTop(conf, true);
         long showTop = System.nanoTime();
 
         iterationWithPartitionByRowCol(conf, false);
@@ -194,7 +194,7 @@ public class RunPagerank {
         showTop(conf, false);
         long end = System.nanoTime();
 
-        printTime(conf, 1, start, preprocess, iteration, showTop);
+//        printTime(conf, 1, start, preprocess, iteration, showTop);
         printTime(conf, 2, showTop, showTop, iteration2, end);
     }
 

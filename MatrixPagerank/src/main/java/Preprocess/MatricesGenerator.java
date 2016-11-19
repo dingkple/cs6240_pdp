@@ -12,6 +12,7 @@ import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 import java.net.URI;
 
@@ -37,6 +38,7 @@ public class MatricesGenerator {
         job.setMapperClass(LinkNameMapMapper.class);
         job.setPartitionerClass(LinkNamePartitioner.class);
         job.setReducerClass(LinkNameMapReducer.class);
+//        job.setNumReduceTasks(PagerankConfig.NUMBER_OF_REDUCERS_INT);
 
         job.setMapOutputKeyClass(GraphKeyWritable.class);
         job.setMapOutputValueClass(GraphKeyArrayWritable.class);

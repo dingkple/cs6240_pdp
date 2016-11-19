@@ -30,17 +30,19 @@ public class PagerankConfig {
     public static final int DANGLING_NAME_INT = -1;
     public static final int EMPTY_INLINKS_INT = -2;
     public static final java.lang.String OUTPUT_WORKING_DIRECTORY = "workingdirectory";
+    public static final int NUMBER_OF_REDUCERS_INT = 18;
     public static Long KEY_TYEP_ROW = 1L;
     public static int PR_BLOCK_SIZE = 5000;
     public static Long ROWCOL_BLOCK_SIZE_LONG = 5000000L;
     public static String ROWCOL_BLOCK_SIZE_STRING = "rowcolblocksize";
     public static String BY_ROW_OUTPUT = "byrowoutput";
     public static String BY_COL_OUTPUT = "bycoloutput";
+    public static String NUMBER_OF_REDUCERS_STR = "numberofreducers";
 
     public static enum PagerankCounter{
         LINK_COUNTER,
         EDGE_COUNTER,
-        NUMBER_OF_DANGLING
+        NUMBER_OF_DANGLING,
     }
 
     public static final String DANGLING_NAME = "~~~~~~~";

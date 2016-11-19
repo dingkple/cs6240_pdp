@@ -2,6 +2,8 @@ package TOPK;
 
 import Config.PagerankConfig;
 import Util.Utils;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.IntWritable;
@@ -12,6 +14,7 @@ import org.apache.hadoop.mapreduce.Reducer;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.*;
 
 /**
@@ -28,46 +31,55 @@ public class TopLinksReducer
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
         topMap = new TreeMap<>();
-        linkMap = readLinkMap(context);
+        try {
+            linkMap = readLinkMap(context);
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
     }
 
-
     private Map<Integer, String> readLinkMap(Context context) throws
-            IOException {
-        URI[] uriArray = context.getCacheFiles();
+            IOException, URISyntaxException {
 
-        String path = null;
-        if (uriArray != null) {
-            for (URI uri : uriArray) {
-                if (uri.getPath().contains(PagerankConfig.OUTPUT_LINKMAP)) {
-                    path = uri.getPath();
-                    break;
-                }
-            }
+        String basedir = context.getConfiguration().get(PagerankConfig
+                .OUTPUT_WORKING_DIRECTORY) +
+                "/" +
+                Utils.getPathInTemp(context.getConfiguration(),
+                        PagerankConfig
+                                .OUTPUT_LINKMAP)
+                        .toString();
+        System.out.println("found cache");
+        FileSystem fs = FileSystem.get(new URI(context.getConfiguration().get
+                (PagerankConfig.OUTPUT_WORKING_DIRECTORY)), context
+                .getConfiguration());
+
+        Map<Integer, String> nameMap = new HashMap<>();
+        for (FileStatus file : fs.listStatus(new Path(basedir))) {
+            readNameMap(file.getPath(), nameMap, context);
         }
 
-        if (path == null) {
-            path = Utils.getPathInTemp(context.getConfiguration(),
-                    PagerankConfig.OUTPUT_LINKMAP)
-                    .toString();
-        }
+        nameMap.put(PagerankConfig
+                .DANGLING_NAME_INT, PagerankConfig.DANGLING_NAME);
+        nameMap.put(PagerankConfig.EMPTY_INLINKS_INT, PagerankConfig.EMPTY_INLINKS);
+        return nameMap;
+    }
 
+    private void readNameMap(Path path, Map<Integer, String> nameMap, Context
+            context) throws IOException {
         SequenceFile.Reader reader = new SequenceFile.Reader(context
                 .getConfiguration(), SequenceFile.Reader.file
-                (new Path(path+"/-r-00000")));
+                (path));
 
-        Map<Integer, String> map = new HashMap<>();
+        Text key = new Text();
+        IntWritable value = new IntWritable();
         while (true) {
-            Text key = new Text();
-            IntWritable value = new IntWritable();
-
             if (!reader.next(key, value)) {
+                reader.close();
                 break;
             }
-            map.put(value.get(), key.toString());
+            nameMap.put(value.get(), key.toString());
         }
-
-        return map;
+        System.out.println("map size" + nameMap.size());
     }
 
     /**

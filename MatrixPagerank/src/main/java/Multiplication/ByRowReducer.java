@@ -27,58 +27,58 @@ public class ByRowReducer extends Reducer<IntWritable, DoubleWritable,
     private Map<Integer, Double> pagerankMap;
 
 
-    private Map<Integer, Double> readPagerankValue(Context context) throws
-            IOException {
-        URI[] uriArray = context.getCacheFiles();
-
-        URI path = null;
-        if (uriArray != null) {
-            for (URI uri : uriArray) {
-                System.out.println("current checking uri: " + uri.toString());
-                System.out.println("pagerankdir: " + PagerankConfig
-                        .OUTPUT_PAGERANK + iterNumber);
-                System.out.println(uri.toString().contains(PagerankConfig
-                        .OUTPUT_PAGERANK + iterNumber));
-                if (uri.toString().contains(PagerankConfig
-                        .OUTPUT_PAGERANK + iterNumber)) {
-                    path = uri;
-                    System.out.println("Im not NULL: !!!" + path);
-                    break;
-                }
-            }
-        }
-
-        if (path == null) {
-            String pathStr = PagerankConfig
-                    .OUTPUT_PAGERANK +
-                    iterNumber;
-            if (iterNumber == 1) {
-                pathStr += "/-r-00000";
-            } else {
-                pathStr += "/part-r-00000";
-            }
-            path = Utils.getPathInTemp(context.getConfiguration(), pathStr)
-                    .toUri();
-        }
-
-
-        SequenceFile.Reader reader = new SequenceFile.Reader(context
-                .getConfiguration(), SequenceFile.Reader.file
-                (new Path(path)));
-
-        Map<Integer, Double> map = new HashMap<>();
-        while (true) {
-            IntWritable key = new IntWritable();
-            DoubleWritable value = new DoubleWritable();
-
-            if (!reader.next(key, value)) {
-                break;
-            }
-            map.put(key.get(), 0.0);
-        }
-
-        return map;
-    }
+//    private Map<Integer, Double> readPagerankValue(Context context) throws
+//            IOException {
+//        URI[] uriArray = context.getCacheFiles();
+//
+//        URI path = null;
+//        if (uriArray != null) {
+//            for (URI uri : uriArray) {
+//                System.out.println("current checking uri: " + uri.toString());
+//                System.out.println("pagerankdir: " + PagerankConfig
+//                        .OUTPUT_PAGERANK + iterNumber);
+//                System.out.println(uri.toString().contains(PagerankConfig
+//                        .OUTPUT_PAGERANK + iterNumber));
+//                if (uri.toString().contains(PagerankConfig
+//                        .OUTPUT_PAGERANK + iterNumber)) {
+//                    path = uri;
+//                    System.out.println("Im not NULL: !!!" + path);
+//                    break;
+//                }
+//            }
+//        }
+//
+//        if (path == null) {
+//            String pathStr = PagerankConfig
+//                    .OUTPUT_PAGERANK +
+//                    iterNumber;
+//            if (iterNumber == 1) {
+//                pathStr += "/-r-00000";
+//            } else {
+//                pathStr += "/part-r-00000";
+//            }
+//            path = Utils.getPathInTemp(context.getConfiguration(), pathStr)
+//                    .toUri();
+//        }
+//
+//
+//        SequenceFile.Reader reader = new SequenceFile.Reader(context
+//                .getConfiguration(), SequenceFile.Reader.file
+//                (new Path(path)));
+//
+//        Map<Integer, Double> map = new HashMap<>();
+//        while (true) {
+//            IntWritable key = new IntWritable();
+//            DoubleWritable value = new DoubleWritable();
+//
+//            if (!reader.next(key, value)) {
+//                break;
+//            }
+//            map.put(key.get(), 0.0);
+//        }
+//
+//        return map;
+//    }
 
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
@@ -89,11 +89,11 @@ public class ByRowReducer extends Reducer<IntWritable, DoubleWritable,
 
         counter = 0.0;
 
-
         lastDanglingSum = context.getConfiguration().getDouble(PagerankConfig
                 .DANGLING_NAME, 0);
 
-        pagerankMap = readPagerankValue(context);
+//        pagerankMap = readPagerankValue(context);
+        pagerankMap = new HashMap<>();
     }
 
     @Override
@@ -107,7 +107,7 @@ public class ByRowReducer extends Reducer<IntWritable, DoubleWritable,
 //            Utils.writeData(PagerankConfig.DANGLING_FILENAME, String.valueOf
 //                    (v), context.getConfiguration());
 //        } else {
-            pagerankMap.put(key.get(), v);
+        pagerankMap.put(key.get(), v);
 //        }
 
         counter += v;
@@ -118,16 +118,23 @@ public class ByRowReducer extends Reducer<IntWritable, DoubleWritable,
         IntWritable key = new IntWritable();
         DoubleWritable value = new DoubleWritable();
         for (int k : pagerankMap.keySet()) {
-            key.set(k);
-            value.set(pagerankMap.get(k));
-            context.write(
-                    key,
-                    value
-            );
+            if (k != PagerankConfig.DANGLING_NAME_INT) {
+                key.set(k);
+                value.set(pagerankMap.get(k));
+                context.write(
+                        key,
+                        value
+                );
+            } else {
+                Utils.writeData(PagerankConfig.DANGLING_FILENAME, String
+                                .valueOf(pagerankMap.get(k)),
+                        context
+                        .getConfiguration());
+            }
         }
 
-        Utils.writeData(PagerankConfig.DANGLING_FILENAME, String.valueOf(1 -
-                counter), context.getConfiguration());
+//        Utils.writeData(PagerankConfig.DANGLING_FILENAME, String.valueOf(1 -
+//                counter), context.getConfiguration());
         System.out.println(counter);
     }
 }
