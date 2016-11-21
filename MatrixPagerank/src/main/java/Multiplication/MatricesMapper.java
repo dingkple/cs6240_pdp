@@ -28,7 +28,7 @@ public class MatricesMapper extends Mapper<IntWritable, Writable,
 
         blockNum = context.getConfiguration().getInt(String.valueOf(PagerankConfig
                 .ROWCOL_BLOCK_SIZE_STRING), -1);
-        
+
         blockMap = new HashMap<>();
 
         isByRow = context.getConfiguration().getBoolean(PagerankConfig
@@ -44,12 +44,16 @@ public class MatricesMapper extends Mapper<IntWritable, Writable,
         if (!blockMap.containsKey(block_id)) {
             blockMap.put(block_id, new ArrayList<>());
         }
-    if (key.get() == PagerankConfig.DANGLING_NAME_INT) {
+
+
+        if (key.get() == PagerankConfig.DANGLING_NAME_INT) {
             ROWCOLWritable danglingRow = new ROWCOLWritable(
                     key.get(),
                     (CellArrayWritable) value
             );
 
+            // if partition_by_col, dangling links should be sent to each
+            // block, else just send them as normal links.
             if (!isByRow) {
                 for (int i = 0; i < blockNum; i++) {
                     if (!blockMap.containsKey(i)) {

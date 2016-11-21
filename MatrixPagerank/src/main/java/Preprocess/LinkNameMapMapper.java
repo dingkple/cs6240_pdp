@@ -46,6 +46,7 @@ public class LinkNameMapMapper extends Mapper<LongWritable, Text, GraphKeyWritab
             linkPageNames.clear();
             String pageName = processLine(line.toString(), xmlReader);
 
+            // remove self-link
             if (linkPageNames.contains(pageName)) {
                 linkPageNames.remove(pageName);
             }

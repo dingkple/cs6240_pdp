@@ -9,7 +9,7 @@ import java.io.IOException;
 /**
  * Created by kingkz on 11/13/16.
  */
-public class NameHashMapper extends Mapper<Text, IntWritable, IntWritable,
+public class NameMapper extends Mapper<Text, IntWritable, IntWritable,
         PagerankCellWritable> {
 
     @Override

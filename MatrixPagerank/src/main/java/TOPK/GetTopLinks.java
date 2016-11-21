@@ -4,18 +4,12 @@ import Config.PagerankConfig;
 import Util.Utils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.MultipleInputs;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.TreeMap;
 
 /**
  * Created by kingkz on 11/13/16.
@@ -51,7 +45,7 @@ public class GetTopLinks {
                 job,
                 Utils.getPathInTemp(conf, PagerankConfig.OUTPUT_LINKMAP),
                 SequenceFileInputFormat.class,
-                NameHashMapper.class
+                NameMapper.class
         );
 
         job.setReducerClass(TopLinksReducer.class);

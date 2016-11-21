@@ -21,10 +21,7 @@ public class LinkNameMapReducer extends Reducer<GraphKeyWritable,
     private MultipleOutputs multipleOutput;
     private List<TextCellWritable> names;
     private List<TextCellWritable> danglings;
-    private int counter1;
     private List<TextCellWritable> emptyInlinks;
-    private double counter2 = 0;
-    private double counter3 = 0;
 
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
@@ -33,8 +30,6 @@ public class LinkNameMapReducer extends Reducer<GraphKeyWritable,
         names = new ArrayList<>();
         danglings = new ArrayList<>();
         emptyInlinks = new ArrayList<>();
-        counter1 = 0;
-        counter3 = 0;
     }
 
     @Override
@@ -50,10 +45,6 @@ public class LinkNameMapReducer extends Reducer<GraphKeyWritable,
                     TextCellWritable cell = new TextCellWritable(
                             t.getName() , 1.0 / t.getCount());
 
-                    if (key.getType() == PagerankConfig.INLINK_TYPE)
-                        counter2 += 1.0 / t.getCount();
-                    if (key.getType() == PagerankConfig.OUTLINK_TYPE)
-                        counter3 += 1.0/t.getCount();
                     names.add(cell);
                 }
             }
@@ -61,6 +52,7 @@ public class LinkNameMapReducer extends Reducer<GraphKeyWritable,
 
         TextCellArrayWritable links = new TextCellArrayWritable(names);
 
+        // Treat them differently according to their keys
         if (key.getType() == PagerankConfig.OUTLINK_TYPE) {
 
             if (links.get().length > 0) {
@@ -73,25 +65,6 @@ public class LinkNameMapReducer extends Reducer<GraphKeyWritable,
             } else {
                 danglings.add(new TextCellWritable(key.getName(), 1.0));
             }
-
-//            linkCounter.increment(1);
-//            int linkId = inReducerCounter * numberOfReducers + reducerID;
-//            inReducerCounter += 1;
-//            multipleOutput.write(
-//                    PagerankConfig.OUTPUT_LINKMAP,
-//                    new Text(key.getName()),
-//                    new Text(String.valueOf(linkId)),
-//                    PagerankConfig.OUTPUT_LINKMAP + "/"
-//            );
-//
-//            multipleOutput.write(
-//                    PagerankConfig.OUTPUT_PAGERANK,
-//                    new IntWritable(linkId),
-//                    new DoubleWritable(0.0),
-//                    PagerankConfig.OUTPUT_PAGERANK + "1/"
-//            );
-
-
         } else if (key.getType() == PagerankConfig.INLINK_TYPE) {
             if (links.get().length > 0) {
 
@@ -101,14 +74,12 @@ public class LinkNameMapReducer extends Reducer<GraphKeyWritable,
                         links,
                         PagerankConfig.OUTPUT_INLINKS + "/"
                 );
-                counter1 += 1;
             } else {
                 emptyInlinks.add(new TextCellWritable(key.getName(),
                         0.0));
             }
         } else {
             linkCounter.increment(1);
-
 
             multipleOutput.write(
                     PagerankConfig.OUTPUT_LINKMAP,
@@ -152,7 +123,7 @@ public class LinkNameMapReducer extends Reducer<GraphKeyWritable,
                 new TextCellArrayWritable(danglingArr),
                 PagerankConfig.OUTPUT_INLINKS + "/"
         );
-//
+
         multipleOutput.write(
                 PagerankConfig.OUTPUT_OUTLINKS,
                 new GraphKeyWritable(
@@ -161,7 +132,7 @@ public class LinkNameMapReducer extends Reducer<GraphKeyWritable,
                 new TextCellArrayWritable(emptyInlinkArr),
                 PagerankConfig.OUTPUT_OUTLINKS + "/"
         );
-//
+
         multipleOutput.write(
                 PagerankConfig.OUTPUT_INLINKS,
                 new GraphKeyWritable(
@@ -170,8 +141,6 @@ public class LinkNameMapReducer extends Reducer<GraphKeyWritable,
                 new TextCellArrayWritable(emptyInlinkArr),
                 PagerankConfig.OUTPUT_INLINKS + "/"
         );
-
-        System.out.println("counter1: " + counter1);
 
         multipleOutput.close();
     }

@@ -40,25 +40,15 @@ public class PagerankCellWritable implements Writable {
         this.pagerank = pagerank;
     }
 
-//    public int getHash() {
-//        return hash;
-//    }
-//
-//    public void setHash(int hash) {
-//        this.hash = hash;
-//    }
-
     @Override
     public void write(DataOutput out) throws IOException {
         out.writeUTF(name);
         out.writeDouble(pagerank);
-//        out.writeInt(hash);
     }
 
     @Override
     public void readFields(DataInput in) throws IOException {
         name = in.readUTF();
         pagerank = in.readDouble();
-//        hash = in.readInt();
     }
 }

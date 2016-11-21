@@ -14,30 +14,22 @@ import java.util.*;
 /**
  * Created by kingkz on 11/12/16.
  */
-public class MultiplicationByRowReducer extends Reducer<IntWritable, ROWCOLArrayWritable,
+public class MultiplicationByRowColReducer extends Reducer<IntWritable, ROWCOLArrayWritable,
         IntWritable, DoubleWritable> {
 
-    private List<ROWCOLWritable> rowdata;
+    private List<ROWCOLWritable> rowcoldata;
     private Map<Integer, Double> pagerankValueMap;
     private Map<Integer, Double> pagerankOldMap;
 
     private boolean isByRow;
-    private double counter1;
-    private double counter2;
-    private double counter3;
-    private int counter4;
 
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
-        rowdata = new ArrayList<>();
+        rowcoldata = new ArrayList<>();
         pagerankValueMap = new HashMap<>();
         pagerankOldMap = new HashMap<>();
         isByRow = context.getConfiguration().getBoolean(PagerankConfig
                 .PARTITION_BY_ROW, true);
-        counter1 = 0.0;
-        counter2 = 0.0;
-        counter3 = 0.0;
-        counter4 = 0;
     }
 
     @Override
@@ -46,7 +38,12 @@ public class MultiplicationByRowReducer extends Reducer<IntWritable, ROWCOLArray
             InterruptedException {
 
         Iterator<ROWCOLArrayWritable> iter = values.iterator();
-        rowdata.clear();
+        rowcoldata.clear();
+
+        /*
+           Get all the row or columns and pagerank vectors from the coming
+           values.
+         */
         while (iter.hasNext()) {
             ROWCOLArrayWritable w0 = iter.next();
             for (Writable w1 : w0.get()) {
@@ -54,21 +51,13 @@ public class MultiplicationByRowReducer extends Reducer<IntWritable, ROWCOLArray
                 if (w.getId() == PagerankConfig.PAGERANK_COL_INT) {
                     for (Writable w2 : w.getCellArray().get()) {
                         CellWritable cell = (CellWritable) w2;
-//                        if (!pagerankOldMap.containsKey(cell.getRowcol())) {
-//                            pagerankOldMap.put(cell.getRowcol(), 0.0);
-//                        }
-//                        pagerankOldMap.put(cell.getRowcol(), pagerankOldMap
-//                                .get(cell.getRowcol()) + cell.getValue());
-                        counter3 += cell.getValue();
                         pagerankOldMap.put(cell.getRowcol(), cell.getValue());
                     }
                 } else {
-                    this.rowdata.add(new ROWCOLWritable(w));
+                    this.rowcoldata.add(new ROWCOLWritable(w));
                 }
             }
         }
-
-        System.out.println(counter3);
 
         if (isByRow) {
             calculateValueByRow();
@@ -83,26 +72,25 @@ public class MultiplicationByRowReducer extends Reducer<IntWritable, ROWCOLArray
         for (int linkNumber : pagerankValueMap.keySet()) {
             if (isByRow && linkNumber == PagerankConfig.DANGLING_NAME_INT) {
                 double dangling = pagerankValueMap.get(linkNumber);
-                System.out.println("dangling: " + dangling);
                 Utils.writeData(
                         PagerankConfig.DANGLING_FILENAME,
                         String.valueOf(dangling),
                         context.getConfiguration());
             } else {
-                counter4 += 1;
                 context.write(
                         new IntWritable(linkNumber),
                         new DoubleWritable(pagerankValueMap.get(linkNumber))
                 );
-                counter2 += pagerankValueMap.get(linkNumber);
             }
-            counter1 += pagerankValueMap.get(linkNumber);
         }
         pagerankValueMap.clear();
     }
 
+    /**
+     * Calculate each block
+     */
     private void calculateValueByCol() {
-        for (ROWCOLWritable rowcol : rowdata) {
+        for (ROWCOLWritable rowcol : rowcoldata) {
             boolean isDangling = rowcol.getId() == PagerankConfig
                     .DANGLING_NAME_INT;
 
@@ -115,10 +103,13 @@ public class MultiplicationByRowReducer extends Reducer<IntWritable, ROWCOLArray
                 }
             }
 
+            // treat 3 kinds of data differently.
+            // empty_inlink list is used to ensure pagerank vector containing
+            // all the links
+            // dangling list is used for compute the sum of dangling links
             for (Writable w : rowcol.getCellArray().get()) {
                 CellWritable cell = (CellWritable) w;
                 try {
-
                     if (isEmptyLinks) {
                         if (!pagerankValueMap.containsKey(cell.getRowcol())) {
                             pagerankValueMap.put(cell.getRowcol(), 0.0);
@@ -144,11 +135,6 @@ public class MultiplicationByRowReducer extends Reducer<IntWritable, ROWCOLArray
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
-//                    System.err.println("rowcol: " + rowcol.getId() + " cell: " +
-//                            "" + cell.getRowcol());
-//                    System.err.println(rowcol.getId() % 3 + " " + cell
-//                            .getRowcol()
-//                            % 3);
                 }
             }
         }
@@ -157,7 +143,7 @@ public class MultiplicationByRowReducer extends Reducer<IntWritable, ROWCOLArray
 
     private void calculateValueByRow()
             throws IOException, InterruptedException {
-        for (ROWCOLWritable rowcol : rowdata) {
+        for (ROWCOLWritable rowcol : rowcoldata) {
             boolean isEmpltyInlink = rowcol.getId() == PagerankConfig.EMPTY_INLINKS_INT;
             for (Writable cell : rowcol.getCellArray().get()) {
                 CellWritable c = (CellWritable) cell;
@@ -165,6 +151,10 @@ public class MultiplicationByRowReducer extends Reducer<IntWritable, ROWCOLArray
                 if (isEmpltyInlink) {
                     pagerankValueMap.put(c.getRowcol(), 0.0);
                 } else {
+
+                    // dangling links are handled here with other rows, in
+                    // pre-processing part, all the dangling links are
+                    // compressed as one row now.
                     if (!pagerankValueMap.containsKey(rowcol.getId()))
                         pagerankValueMap.put(rowcol.getId(), 0.0);
 
@@ -189,7 +179,5 @@ public class MultiplicationByRowReducer extends Reducer<IntWritable, ROWCOLArray
         if (!isByRow) {
             writeValues(context);
         }
-
-        System.out.println(counter1 + " " + counter2 + " " + counter4);
     }
 }

@@ -27,6 +27,12 @@ import static TOPK.GetTopLinks.showTop;
 public class RunPagerank {
 
 
+    /**
+     * Compute 10 time for pagerank
+     * @param conf
+     * @param isByRow True for partition by row and false for column
+     * @throws Exception
+     */
     private static void iterationWithPartitionByRowCol(Configuration conf,
                                                     boolean isByRow) throws
             Exception {
@@ -102,7 +108,7 @@ public class RunPagerank {
             job.setOutputKeyClass(IntWritable.class);
             job.setOutputValueClass(DoubleWritable.class);
 
-            job.setReducerClass(MultiplicationByRowReducer.class);
+            job.setReducerClass(MultiplicationByRowColReducer.class);
             job.setOutputFormatClass(SequenceFileOutputFormat.class);
 
             Utils.CheckOutputPath(conf, output);
@@ -120,7 +126,13 @@ public class RunPagerank {
     }
 
 
-    public static void collectValueFromCols(Configuration conf, int iter)
+    /**
+     * Collect pagerank in each block partitioned by column in each iteration.
+     * @param conf
+     * @param iter
+     * @throws Exception
+     */
+    private static void collectValueFromCols(Configuration conf, int iter)
             throws Exception {
         Job job = Job.getInstance(conf);
 
@@ -193,6 +205,11 @@ public class RunPagerank {
             partitionWaySet = true;
         }
 
+        /*
+            If partition way set in the command line, only compute it in that
+             way, else compute in both way and record time spent on both
+             methods.
+         */
         if (!partitionWaySet) {
             long start = System.nanoTime();
             MatricesGenerator.preprocess(conf, input);

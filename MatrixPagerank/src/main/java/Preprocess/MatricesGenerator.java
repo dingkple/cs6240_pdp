@@ -38,7 +38,6 @@ public class MatricesGenerator {
         job.setMapperClass(LinkNameMapMapper.class);
         job.setPartitionerClass(LinkNamePartitioner.class);
         job.setReducerClass(LinkNameMapReducer.class);
-//        job.setNumReduceTasks(PagerankConfig.NUMBER_OF_REDUCERS_INT);
 
         job.setMapOutputKeyClass(GraphKeyWritable.class);
         job.setMapOutputValueClass(GraphKeyArrayWritable.class);
@@ -107,7 +106,7 @@ public class MatricesGenerator {
 
     }
 
-    public static void writeMappedGraph(Configuration conf) throws
+    private static void writeMappedGraph(Configuration conf) throws
             Exception {
 
         Job job = Job.getInstance(conf);
@@ -115,20 +114,7 @@ public class MatricesGenerator {
         job.setMapOutputKeyClass(IntWritable.class);
         job.setMapOutputValueClass(CellArrayWritable.class);
 
-        URI links = new URI(conf.get(PagerankConfig.OUTPUT_WORKING_DIRECTORY) +
-                "/" +
-                Utils.getPathInTemp(conf,
-                        PagerankConfig
-                                .OUTPUT_LINKMAP + "/-r-00000")
-                        .toString());
-
-//        if (conf.get(PagerankConfig.URI_ROOT) != null) {
-//            System.out.println("adding cache: " + links.toString());
-//            job.addCacheFile(links);
-//        }
-
         job.setJarByClass(MatricesGenerator.class);
-//        job.setReducerClass(NameToNumberReducer.class);
         job.setNumReduceTasks(0);
 
         MultipleInputs.addInputPath(

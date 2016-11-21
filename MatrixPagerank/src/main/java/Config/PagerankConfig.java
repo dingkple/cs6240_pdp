@@ -30,7 +30,7 @@ public class PagerankConfig {
     public static final String MAPPED_OUTPUT = "mappedoutput";
     public static final Integer DANGLING_NAME_INT = -1;
     public static final int PR_BLOCK_SIZE = 5000;
-    public static final Long ROWCOL_BLOCK_SIZE_LONG = 180000L;
+    public static final Long ROWCOL_BLOCK_SIZE_LONG = 250000L;
     public static final String ROWCOL_BLOCK_SIZE_STRING = "rowcolblocksize";
     public static final int EMPTY_INLINKS_INT = -2;
     public static final String TOP_100_PATH_BY_ROW = "top_100_by_row";
