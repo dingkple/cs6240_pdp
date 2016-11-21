@@ -4,6 +4,7 @@ package Util;
  * Created by kingkz on 11/11/16.
  */
 
+import Config.PagerankConfig;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -63,7 +64,7 @@ public class Utils {
 
 
     public static void writeData(String key, String value, Configuration conf) throws IOException {
-        Path path = getPathInTemp(key);
+        Path path = getPathInTemp(conf, key);
         checkTempFilePathbyKey(conf, key);
         FSDataOutputStream fin = FileSystem.get(conf).create(path);
         fin.writeUTF(key+"="+value);
@@ -71,7 +72,7 @@ public class Utils {
     }
 
     public static String readData(String key, Configuration conf) throws IOException {
-        Path path = getPathInTemp(key);
+        Path path = getPathInTemp(conf, key);
 
         FileSystem fs = FileSystem.get(conf);
 
@@ -89,30 +90,37 @@ public class Utils {
 
     public static void prepareOutputPath(Configuration conf) throws IOException {
         ensurePath(conf, new Path(Config.PagerankConfig.TEMP_ROOT), true);
-        ensurePath(conf, getPathInTemp(Config.PagerankConfig
+        ensurePath(conf, getPathInTemp(conf, Config.PagerankConfig
                 .OUTPUT_ROOT_PATH), true);
     }
 
     private static void checkTempFilePathbyKey(Configuration conf, String key) throws IOException {
         FileSystem hdfs = FileSystem.get(conf);
-        Path tempPath = getPathInTemp(key);
+        Path tempPath = getPathInTemp(conf, key);
         if (!hdfs.exists(tempPath)) {
             hdfs.mkdirs(tempPath);
         }
 
-        Path path = getPathInTemp(key);
+        Path path = getPathInTemp(conf, key);
         if (hdfs.exists(path)) {
             hdfs.delete(path, true);
         }
     }
 
-    public static Path getPathInTemp(String key) {
-        return new Path(Config.PagerankConfig.TEMP_ROOT+ "/" + key);
+    public static Path getPathInTemp(Configuration conf, String key) throws IOException {
+//        if (conf.get(PagerankConfig.URI_ROOT) == null) {
+//            Path p = new Path("test");
+//            FileSystem fs = p.getFileSystem(conf);
+//            conf.set(PagerankConfig.OUTPUT_WORKING_DIRECTORY, String.valueOf(fs.getWorkingDirectory
+//                    ()));
+//        }
+        return new Path(PagerankConfig.TEMP_ROOT + "/" + key);
     }
 
-
-    public static void CheckOutputPath(Configuration conf, Path path) throws IOException {
-        FileSystem fs = FileSystem.get(conf);
+    public static void CheckOutputPath(Configuration conf, Path path) throws IOException, URISyntaxException {
+        FileSystem fs = FileSystem.get(new URI(PagerankConfig
+                        .TEMP_ROOT),
+                conf);
         fs.delete(path, true);
     }
 
@@ -162,6 +170,20 @@ public class Utils {
     public static void ensureFinalPath(Configuration conf, Path path, boolean newPath) throws IOException {
         FileSystem fs = getFileSystem(conf);
         check(fs, path, newPath);
+    }
+
+    public static Path getOutputPathByIterNum(Configuration conf, int i) throws IOException {
+        return Utils.getPathInTemp(conf, PagerankConfig.OUTPUT_ROOT_PATH +
+                "/output_" + i);
+    }
+
+    public static Path getFinalOutputPathByKey(Configuration conf, String key)
+            throws IOException {
+        Path path = new Path(conf.get(PagerankConfig.FINAL_OUTPUT));
+        Utils.ensureFinalPath(conf, path, false);
+        Path newPath = new Path(conf.get(PagerankConfig.FINAL_OUTPUT) + "/" + key);
+        Utils.CheckFinalOutputPath(conf, newPath);
+        return newPath;
     }
 
 }

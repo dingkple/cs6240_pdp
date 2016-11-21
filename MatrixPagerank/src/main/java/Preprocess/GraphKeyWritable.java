@@ -1,5 +1,6 @@
 package Preprocess;
 
+import Config.PagerankConfig;
 import org.apache.hadoop.io.WritableComparable;
 
 import java.io.DataInput;
@@ -77,14 +78,15 @@ public class GraphKeyWritable implements WritableComparable<GraphKeyWritable> {
         count = in.readInt();
     }
 
+
     @Override
     public int compareTo(GraphKeyWritable o) {
-        if (count != o.count) {
-            return (int) (count - o.count);
-        } else if (type != o.type) {
-            return (int) (type - o.type);
+        if (!name.equals(o.getName())) {
+            return name.compareTo(o.getName());
+        } else if (count != o.count) {
+            return count - o.count;
         } else {
-            return name.compareTo(o.name);
+            return type - o.type;
         }
     }
 

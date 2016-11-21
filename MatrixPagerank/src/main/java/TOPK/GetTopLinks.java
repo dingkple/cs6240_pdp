@@ -33,9 +33,11 @@ public class GetTopLinks {
         Path pagerankInput;
 
         if (isByRow) {
-            pagerankInput = Utils.getPathInTemp(PagerankConfig.OUTPUT_PAGERANK + "11");
+            pagerankInput = Utils.getPathInTemp(conf, PagerankConfig
+                    .OUTPUT_PAGERANK + "11");
         } else {
-            pagerankInput = Utils.getPathInTemp(PagerankConfig.OUTPUT_PAGERANK + "21");
+            pagerankInput = Utils.getPathInTemp(conf, PagerankConfig
+                    .OUTPUT_PAGERANK + "21");
         }
 
         MultipleInputs.addInputPath(
@@ -47,19 +49,27 @@ public class GetTopLinks {
 
         MultipleInputs.addInputPath(
                 job,
-                Utils.getPathInTemp(PagerankConfig.OUTPUT_LINKMAP),
+                Utils.getPathInTemp(conf, PagerankConfig.OUTPUT_LINKMAP),
                 SequenceFileInputFormat.class,
                 NameHashMapper.class
         );
 
         job.setReducerClass(TopLinksReducer.class);
+        job.setNumReduceTasks(1);
 
         job.setOutputKeyClass(IntWritable.class);
         job.setOutputValueClass(PagerankCellWritable.class);
         job.setOutputFormatClass(TextOutputFormat.class);
 
-        Path output = new Path(PagerankConfig.FINAL_OUTPUT);
-        Utils.CheckOutputPath(conf, output);
+        Path output;
+
+        if (isByRow) {
+            output = Utils.getFinalOutputPathByKey(conf,
+                    PagerankConfig.TOP_100_PATH_BY_ROW);
+        } else {
+            output = Utils.getFinalOutputPathByKey(conf,
+                    PagerankConfig.TOP_100_PATH_BY_COL);
+        }
 
         FileOutputFormat.setOutputPath(job, output);
 

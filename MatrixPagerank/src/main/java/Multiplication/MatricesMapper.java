@@ -19,21 +19,12 @@ import java.util.Map;
 public class MatricesMapper extends Mapper<IntWritable, Writable,
         IntWritable, ROWCOLArrayWritable> {
 
-    private long totalRecs;
-    private int iter;
     private int blockNum;
     private Map<Integer, List<ROWCOLWritable>> blockMap;
     private boolean isByRow;
 
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
-        totalRecs = Long.valueOf(
-                Utils.readData(PagerankConfig.NUMBER_OF_LINKS, context
-                        .getConfiguration())
-        );
-
-        iter = Integer.valueOf(context.getConfiguration().get(PagerankConfig
-                .ITER_NUM));
 
         blockNum = context.getConfiguration().getInt(String.valueOf(PagerankConfig
                 .ROWCOL_BLOCK_SIZE_STRING), -1);
@@ -53,7 +44,7 @@ public class MatricesMapper extends Mapper<IntWritable, Writable,
         if (!blockMap.containsKey(block_id)) {
             blockMap.put(block_id, new ArrayList<>());
         }
-        if (key.get() == PagerankConfig.DANGLING_NAME.hashCode()) {
+    if (key.get() == PagerankConfig.DANGLING_NAME_INT) {
             ROWCOLWritable danglingRow = new ROWCOLWritable(
                     key.get(),
                     (CellArrayWritable) value

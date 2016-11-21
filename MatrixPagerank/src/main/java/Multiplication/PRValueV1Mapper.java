@@ -27,8 +27,6 @@ public class PRValueV1Mapper extends Mapper<IntWritable,
     private boolean isByRow;
     private Long blockSize;
     Map<Integer, Set<CellWritable>> blockMap;
-    private double sumD;
-    private double sumO;
 
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
@@ -56,14 +54,12 @@ public class PRValueV1Mapper extends Mapper<IntWritable,
 
         blockMap = new HashMap<>();
 
-        sumD = 0;
-        sumO = 0;
     }
 
     @Override
     protected void map(IntWritable key, DoubleWritable value, Context context)
             throws IOException, InterruptedException {
-        //todo do the group by col thing:
+        // todo do the group by col thing:
         double v;
 
         if (iterNumber == 1) {
@@ -100,7 +96,7 @@ public class PRValueV1Mapper extends Mapper<IntWritable,
                         new IntWritable(i),
                         new ROWCOLArrayWritable(new ROWCOLWritable[]{
                                 new ROWCOLWritable(
-                                        PagerankConfig.PAGERANK_COL.hashCode(),
+                                        PagerankConfig.PAGERANK_COL_INT,
                                         new CellArrayWritable(values))})
                 );
             }
@@ -112,7 +108,7 @@ public class PRValueV1Mapper extends Mapper<IntWritable,
                         new IntWritable(k),
                         new ROWCOLArrayWritable(new ROWCOLWritable[]{
                                 new ROWCOLWritable(
-                                        PagerankConfig.PAGERANK_COL.hashCode(),
+                                        PagerankConfig.PAGERANK_COL_INT,
                                         cellArrayWritable
 
                                 )

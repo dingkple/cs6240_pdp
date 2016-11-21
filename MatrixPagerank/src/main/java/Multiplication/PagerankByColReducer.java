@@ -29,7 +29,7 @@ public class PagerankByColReducer extends Reducer<IntWritable,
             DoubleWritable dw = (DoubleWritable) w;
             v += dw.get();
         }
-        if (key.get() == PagerankConfig.DANGLING_NAME.hashCode()) {
+        if (key.get() == PagerankConfig.DANGLING_NAME_INT) {
             Utils.writeData(
                     PagerankConfig.DANGLING_FILENAME,
                     String.valueOf(v),
