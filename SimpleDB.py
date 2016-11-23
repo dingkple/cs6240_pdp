@@ -11,13 +11,13 @@ class SimpleDB():
         self.END = False
 
 
-    def current_transaction(self):
+    def _get_current_transaction(self):
         return self.transactions[-1]
 
-    def set_db(self, kvpair):
+    def _set_db(self, kvpair):
         k, v = kvpair
         if self.IN_TRANSACTION:
-            current_transaction = self.current_transaction()
+            current_transaction = self._get_current_transaction()
             if k not in current_transaction:
                 if k in self.data:
                     current_transaction[k] = (False, self.data[k])
@@ -56,9 +56,9 @@ class SimpleDB():
         else:
             print 'NULL'
 
-    def unset_db(self, key):
+    def _un_set_db(self, key):
         if self.IN_TRANSACTION:
-            current_transaction = self.current_transaction()
+            current_transaction = self._get_current_transaction()
             if key in current_transaction:
                 is_new, value = current_transaction[key]
                 if is_new:
@@ -70,18 +70,18 @@ class SimpleDB():
             self._unset(key)
 
 
-    def num_equal_to(self, value):
+    def _num_equal_to(self, value):
         if value in self.total_counter:
             print self.total_counter[value]
         else:
             print 0
 
-    def begin_transaction(self):
+    def _begin_transaction(self):
         self.IN_TRANSACTION = True
         self.transactions += {},
 
 
-    def end_transaction(self):
+    def _end_transaction(self):
         if self.IN_TRANSACTION:
             self.transactions = []
             self.IN_TRANSACTION = False
@@ -89,7 +89,7 @@ class SimpleDB():
             print 'NO TRANSACTION'
 
 
-    def roll_back(self):
+    def _roll_back(self):
         if self.IN_TRANSACTION:
             current_transaction = self.transactions.pop()
             for key in current_transaction:
@@ -103,39 +103,25 @@ class SimpleDB():
         else:
             print 'NO TRANSACTION'
 
-    def exec_transaction(self):
-        for operation in self.transactions:
-            if operation[0] == 'UNSET':
-                cmd, key = operation
-                if key in self.data:
-                    self.done.append((cmd, (key, self.data[key])))
-                    self._exec_cmd(operation)
-            else:
-                self._exec_cmd(operation)
-
-            if not self.SUCCESS:
-                self.roll_back(operation)
-
-
     def _exec_cmd(self, cmd):
         if cmd[0] == 'SET':
             cmd = (cmd[0], cmd[1])
-            self.set_db(cmd[1])
+            self._set_db(cmd[1])
             return 
         elif cmd[0] in ['GET', 'UNSET', 'NUMEQUALTO']:    
             if cmd[0] == "GET":
                 self.get_db(cmd[1])
             elif cmd[0] == 'UNSET':
-                self.unset_db(cmd[1])
+                self._un_set_db(cmd[1])
             elif cmd[0] == 'NUMEQUALTO':
-                self.num_equal_to(cmd[1])
+                self._num_equal_to(cmd[1])
         else:
             if cmd[0] == 'BEGIN':
-                self.begin_transaction()
+                self._begin_transaction()
             elif cmd[0] == 'COMMIT':
-                self.end_transaction()
+                self._end_transaction()
             elif cmd[0] == 'ROLLBACK':
-                self.roll_back()
+                self._roll_back()
 
     def parse(self, cmd):
         if len(cmd) == 1 and cmd[0] == 'END':
