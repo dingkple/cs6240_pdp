@@ -11,6 +11,7 @@ class SimpleDB():
 
         self.SUCCESS = True
         self.IN_TRANSACTION = False
+        self.END = False
 
 
     def current_transaction(self):
@@ -19,11 +20,13 @@ class SimpleDB():
     def set_db(self, kvpair):
         k, v = kvpair
         if self.IN_TRANSACTION:
-            if k not in self.current_transaction:
+            current_transaction = self.current_transaction()
+            if k not in current_transaction:
+                # print 'cur_t', current_transaction
                 if k in self.data:
-                    self.current_transaction[k] = (False, self.data[k])
+                    current_transaction[k] = (False, self.data[k])
                 else:
-                    self.current_transaction[k] = (True, v)
+                    current_transaction[k] = (True, v)
 
         self._set_kvpair(k, v)
 
@@ -65,12 +68,13 @@ class SimpleDB():
             should we rollback when key not exist? 
         '''
         if self.IN_TRANSACTION:
-            if key in self.current_transaction:
-                is_new, value = self.current_transaction[key]
+            current_transaction = self.current_transaction()
+            if key in current_transaction:
+                is_new, value = current_transaction[key]
                 if is_new:
-                    del self.current_transaction[key]
+                    del current_transaction[key]
             else:
-                self.current_transaction[key] = (False, self.data[key])
+                current_transaction[key] = (False, self.data[key])
 
         if key in self.data:
             self._unset(key)
@@ -90,16 +94,15 @@ class SimpleDB():
 
     def end_transaction(self):
         if self.IN_TRANSACTION:
-            self.transactions.pop()
-            if not self.transactions:
-                self.IN_TRANSACTION = False
+            self.transactions = []
+            self.IN_TRANSACTION = False
         else:
             print 'NO TRANSACTION'
 
 
     def roll_back(self):
         if self.IN_TRANSACTION:
-            current_transaction = self.current_transaction.pop()
+            current_transaction = self.transactions.pop()
             for key in current_transaction:
                 is_new, value = current_transaction[key]
                 if not is_new:
@@ -131,6 +134,7 @@ class SimpleDB():
                 self.SUCCESS = False
                 return
             cmd = (cmd[0], cmd[1])
+            # print '_exec', cmd
             self.set_db(cmd[1])
             return 
         elif cmd[0] in ['GET', 'UNSET', 'NUMEQUALTO']:    
@@ -151,7 +155,7 @@ class SimpleDB():
     def parse(self, cmd):
         self.SUCCESS = True
         if len(cmd) == 1 and cmd[0] == 'END':
-            sys.exit(0)
+            self.END = True
 
         if len(cmd) == 3:
             cmd = (cmd[0], cmd[1:])
@@ -164,13 +168,39 @@ def main():
         s = raw_input().split()
         db.parse(s)
 
+        if db.END:
+            break
 
+import os
 def test():
+
+    files = os.listdir('test_cases_5n9i93agh5d')
+
+    input_file = []
+    output_file = []
+
+    for f in files:
+        if f.startswith('input'):
+            input_file += f,
+        else:
+            output_file += f,
+    input_file.sort()
+    output_file.sort()
+    print input_file
+    for i in range(len(input_file)):
+        s = SimpleDB()
+        f = open('test_cases_5n9i93agh5d' + '/' + input_file[i])
+        print input_file[i]
+        for line in f.readlines():
+            # print line
+            s.parse(line.split())
+        print '*******************'
 
 
 if __name__ == '__main__':
     main()
 
+# test()
 
 # db = SimpleDB()
 # l = ['SET A 1', 'GET A', 'NUMEQUALTO 1']
