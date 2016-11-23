@@ -7,8 +7,6 @@ class SimpleDB():
         self.total_counter = {}
         self.transactions = []
 
-        # self.current_transaction = {}
-
         self.SUCCESS = True
         self.IN_TRANSACTION = False
         self.END = False
@@ -22,7 +20,6 @@ class SimpleDB():
         if self.IN_TRANSACTION:
             current_transaction = self.current_transaction()
             if k not in current_transaction:
-                # print 'cur_t', current_transaction
                 if k in self.data:
                     current_transaction[k] = (False, self.data[k])
                 else:
@@ -64,9 +61,6 @@ class SimpleDB():
         print 'NULL'
 
     def unset_db(self, key):
-        '''
-            should we rollback when key not exist? 
-        '''
         if self.IN_TRANSACTION:
             current_transaction = self.current_transaction()
             if key in current_transaction:
@@ -83,9 +77,8 @@ class SimpleDB():
     def num_equal_to(self, value):
         if value in self.total_counter:
             print self.total_counter[value]
-            return
-
-        print 0
+        else:
+            print 0
 
     def begin_transaction(self):
         self.IN_TRANSACTION = True
@@ -134,7 +127,6 @@ class SimpleDB():
                 self.SUCCESS = False
                 return
             cmd = (cmd[0], cmd[1])
-            # print '_exec', cmd
             self.set_db(cmd[1])
             return 
         elif cmd[0] in ['GET', 'UNSET', 'NUMEQUALTO']:    
