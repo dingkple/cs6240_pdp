@@ -126,6 +126,7 @@ class SimpleDB():
     def parse(self, cmd):
         if len(cmd) == 1 and cmd[0] == 'END':
             self.END = True
+            return
 
         if len(cmd) == 3:
             cmd = (cmd[0], cmd[1:])
@@ -149,7 +150,7 @@ def test():
 
     for f in files:
         if f.startswith('input'):
-            input_file += f,
+            input_file +=
         else:
             output_file += f,
     input_file.sort()
