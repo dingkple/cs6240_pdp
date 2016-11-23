@@ -7,7 +7,6 @@ class SimpleDB():
         self.total_counter = {}
         self.transactions = []
 
-        self.SUCCESS = True
         self.IN_TRANSACTION = False
         self.END = False
 
@@ -27,7 +26,6 @@ class SimpleDB():
 
         self._set_kvpair(k, v)
 
-
     def _set_kvpair(self, k, v):
         old_v = self.data[k] if k in self.data else None
 
@@ -41,7 +39,6 @@ class SimpleDB():
             self.total_counter[old_v] -= 1
             if self.total_counter[old_v] == 0:
                 del self.total_counter[old_v]
-        
 
     def _unset(self, k):
         v = self.data[k]
@@ -56,9 +53,8 @@ class SimpleDB():
         if key in self.data:
             print self.data[key]
             return
-
-        self.SUCCESS = False
-        print 'NULL'
+        else:
+            print 'NULL'
 
     def unset_db(self, key):
         if self.IN_TRANSACTION:
@@ -123,9 +119,6 @@ class SimpleDB():
 
     def _exec_cmd(self, cmd):
         if cmd[0] == 'SET':
-            if len(cmd) != 2:
-                self.SUCCESS = False
-                return
             cmd = (cmd[0], cmd[1])
             self.set_db(cmd[1])
             return 
@@ -145,7 +138,6 @@ class SimpleDB():
                 self.roll_back()
 
     def parse(self, cmd):
-        self.SUCCESS = True
         if len(cmd) == 1 and cmd[0] == 'END':
             self.END = True
 
@@ -157,11 +149,9 @@ class SimpleDB():
 def main():
     db = SimpleDB()
     while True:
+        if db.END:break
         s = raw_input().split()
         db.parse(s)
-
-        if db.END:
-            break
 
 import os
 def test():
@@ -184,10 +174,8 @@ def test():
         f = open('test_cases_5n9i93agh5d' + '/' + input_file[i])
         print input_file[i]
         for line in f.readlines():
-            # print line
             s.parse(line.split())
         print '*******************'
-
 
 if __name__ == '__main__':
     main()
