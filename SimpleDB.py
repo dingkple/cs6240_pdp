@@ -16,6 +16,8 @@ class SimpleDB():
 
     def _set_db(self, kvpair):
         k, v = kvpair
+
+        print 'SET', k, v
         if self.IN_TRANSACTION:
             current_transaction = self._get_current_transaction()
             if k not in current_transaction:
@@ -50,11 +52,12 @@ class SimpleDB():
             del self.total_counter[v]
 
     def get_db(self, key):
+        print 'GET', key
         if key in self.data:
-            print self.data[key]
+            print '>', self.data[key]
             return
         else:
-            print 'NULL'
+            print '>', 'NULL'
 
     def _un_set_db(self, key):
         if self.IN_TRANSACTION:
