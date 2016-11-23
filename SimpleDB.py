@@ -7,10 +7,14 @@ class SimpleDB():
         self.total_counter = {}
         self.transactions = []
 
-        self.current_transaction = {}
+        # self.current_transaction = {}
 
         self.SUCCESS = True
         self.IN_TRANSACTION = False
+
+
+    def current_transaction(self):
+        return self.transactions[-1]
 
     def set_db(self, kvpair):
         k, v = kvpair
@@ -81,25 +85,29 @@ class SimpleDB():
 
     def begin_transaction(self):
         self.IN_TRANSACTION = True
+        self.transactions += {},
+
 
     def end_transaction(self):
         if self.IN_TRANSACTION:
-            self.IN_TRANSACTION = False
-            self.current_transaction = {}
+            self.transactions.pop()
+            if not self.transactions:
+                self.IN_TRANSACTION = False
         else:
             print 'NO TRANSACTION'
 
 
     def roll_back(self):
         if self.IN_TRANSACTION:
-            for key in self.current_transaction:
-                is_new, value = self.current_transaction[key]
+            current_transaction = self.current_transaction.pop()
+            for key in current_transaction:
+                is_new, value = current_transaction[key]
                 if not is_new:
                     self._set_kvpair(key, value)
                 else:
                     self._unset(key)
-            self.IN_TRANSACTION = False
-            self.current_transaction = {}
+            if not self.transactions:
+                self.IN_TRANSACTION = False
         else:
             print 'NO TRANSACTION'
 
@@ -155,6 +163,10 @@ def main():
     while True:
         s = raw_input().split()
         db.parse(s)
+
+
+def test():
+
 
 if __name__ == '__main__':
     main()
