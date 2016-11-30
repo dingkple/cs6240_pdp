@@ -42,19 +42,16 @@ def read_file(name):
 
     print counter
 
-
-
 def print_first_row():
-    f = open("/Users/kple/IdeaProjects/MapReduceFinalProject/randomchosen.csv", 'r')
+    f = open('/Users/kingkz/Downloads/labeled_2.csv', 'r')
     line1 = f.readline()
     line2 = f.readline()
 
-
     rst = map(lambda i: i.split(','), [line1, line2])
-    # for k in zip(map(lambda i: i.split(','), [line1, line2])):
-    # 	print k
-    skip = [1, 2, 3, 4, 9, 10, 11, 12, 16, 1015] + range(20, 27) + range(28, 964)
-    cate = range(962, 967) + range(1016, 1081)
+
+    skip = [1, 2, 3, 4, 9, 10, 11, 12, 16, 1015, 954, 1016, 955, 1017] \
+    + range(20, 27) + range(28, 964)
+    cate = range(964, 969) + range(1020, 1085)
 
     rstoutput = []
     for i, k in enumerate(rst[0]):
@@ -69,12 +66,12 @@ def print_first_row():
         else:
             rstoutput += k + ', NUM',
 
-    output = open("/Users/kple/IdeaProjects/MapReduceFinalProject/data_type.txt", 'wb')
+    output = open("/Users/kingkz/GoogleDrive/cs6240_pdp/cs6240_pdp/final_project/data_type.txt", 'wb')
     for r in rstoutput:
         output.write(r + '\n')
     output.write('')
     output.close()
 
-check_lines()
+# check_lines()
 # read_file('randomchosen.csv')
 print_first_row()
