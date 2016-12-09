@@ -8,14 +8,19 @@ import org.apache.spark.sql.SparkSession
   */
 object test {
   def main(args: Array[String]): Unit = {
-    val conf = new SparkConf().setMaster("local[*]").setAppName("test")
-    val spark = new SparkSession.Builder().config(conf).getOrCreate()
-    val data = spark.read.format("libsvm").load("sample_libsvm_data.txt")
-    data.printSchema()
-    data.schema.map(l => {
-      val k = 1
-      println(k)
-    })
+//    val conf = new SparkConf().setMaster("local[*]").setAppName("test")
+//    val spark = new SparkSession.Builder().config(conf).getOrCreate()
+//    val data = spark.read.format("libsvm").load("sample_libsvm_data.txt")
+//    data.printSchema()
+//    data.schema.map(l => {
+//      val k = 1
+//      println(k)
+//    })
+
+    val a = Array("a", 1)
+
+    println(a(0))
+
   }
 
 }

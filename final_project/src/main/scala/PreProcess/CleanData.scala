@@ -1,26 +1,26 @@
 package PreProcess
 
+import java.io.{BufferedWriter, File, FileWriter}
 import java.util
 
-import Models.GeoAnalysis.GeoKMeans
+import Models.GeoAnalysis.{GeoKMeans, MissAnalysis}
 import org.apache.hadoop.fs.{FileSystem, Path}
-import org.apache.spark.ml.Pipeline
-import org.apache.spark.ml.classification._
-import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
-import org.apache.spark.ml.feature.{IndexToString, StringIndexer, VectorIndexer}
 import org.apache.spark.mllib.classification.{LogisticRegressionWithLBFGS, SVMWithSGD}
-import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
+import org.apache.spark.mllib.clustering.KMeansModel
+import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, MulticlassMetrics}
 import org.apache.spark.mllib.feature.PCA
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.optimization.L1Updater
-import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.mllib.regression.{IsotonicRegression, LabeledPoint}
 import org.apache.spark.mllib.tree.{DecisionTree, GradientBoostedTrees, RandomForest}
 import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.types.{DataType, DoubleType, StructField, StructType}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.{Row, SQLContext, SparkSession}
+import org.apache.spark.util.DoubleAccumulator
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 //import org.apache.spark.mllib.linalg.{Vector, Vectors}
@@ -53,12 +53,30 @@ object CleanData {
     16,
     18,
     19
-  ) ++ (1017 to 1019) ++
-    (20 to 26) ++ (28 to 956) ++ (961 to 963)).toSet
+//    1100,
+//    1098,
+//    1092,
+//    1094,
+//    1096,
+//    1102
+  ) ++ (1017 to 1019)
+//    ++ (20 to 26) ++ (28 to 955)
+    ++ (954 to 956) ++ (960 to 963)).toSet
 
   val cate: Set[Int] = ((964 to 966) ++ (1020 to 1084)).toSet
   val labelIdx = 27
   val oneToK = false
+
+  var resultPathStr = "result4"
+  val knnLoc = true
+
+
+  if (!knnLoc) {
+    resultPathStr = "result0"
+  }
+
+  var file = new File(resultPathStr)
+  val bw = new BufferedWriter(new FileWriter(file))
 
   def getSampleFile(sc: SparkContext, fs: FileSystem): Unit = {
 
@@ -73,10 +91,33 @@ object CleanData {
         else random.nextDouble() < math.pow(10, -2)
       })
 
-    sampleRows.repartition(1).saveAsTextFile(output.toString)
+    sampleRows.repartition(4).saveAsTextFile(output.toString)
   }
 
-  def generateCleanData(sc: SparkContext, data: RDD[String]): RDD[LabeledPoint] = {
+  def generateCleanData(data: RDD[String], sc: SparkContext, fileSystem: FileSystem): RDD[LabeledPoint] = {
+
+    if (knnLoc)
+      extractAllPoints(sc, fileSystem)
+
+    val kmeanModel = KMeansModel.load(sc, Utils.Config.KMEANSOUTPUT)
+
+//    val numAccumulator = (1 to 1657).filter(i=> !skip.contains(i) && !cate.contains(i))
+//      .map(i => i -> sc.doubleAccumulator(i.toString))
+//      .toMap[Int, DoubleAccumulator]
+
+//    val cateMap: collection.mutable.Map[Int, collection.mutable.Map[Int, Int]] = collection.mutable.Map[Int, collection.mutable.Map[Int, Int]]()
+//    for (k <- cate) {
+//      cateMap(k) = collection.mutable.Map[Int, Int]()
+//    }
+//    val cateMap = cate.map(k => k -> mutable.HashMap[Int, Int]()).toMap[Int, mutable.HashMap[Int, Int]]
+
+    val replaceMap = sc.textFile("analysis_2").map(line => {
+      val kv = line.substring(1, line.length-1).split(",")
+      (kv(0).toDouble, kv(1).toDouble)
+    }).collectAsMap()
+
+    val shouldReplace = false
+
     val newData = data
       .map(row => {
         if (!row.startsWith("SAMPLING_EVENT_ID")) {
@@ -86,7 +127,9 @@ object CleanData {
           var label = 0.0
           for (i <- 0 until 1657) {
             val col = withIndex(i)
-              if (skip.contains(i + 1)) buffer += 0.0
+              if (skip.contains(i + 1)) {
+                buffer += 0.0
+              }
               else if (cate.contains(i + 1)) {
                 var value = 0
                 if (col != "?") value = col.toInt
@@ -99,25 +142,90 @@ object CleanData {
 
                   buffer ++= expand
                 } else {
-                  buffer += value
+                  if (col != "?") {
+//                    val m = cateMap(i + 1)
+//                    if (m.contains(value)) {
+//                      m(value) += 1
+//                    } else {
+//                      m(value) = 1
+//                    }
+                    buffer += value
+                  } else {
+                    if (shouldReplace) {
+                      buffer += replaceMap(i)
+                    } else {
+                      buffer += 0.0
+                    }
+                  }
                 }
               } else if (i + 1 == labelIdx) {
-                if (col != "0") label = 1.0
+                if (col != "0" && col != "?") label = 1.0
                 buffer += 0.0
               } else {
-                if (col != "?")
-                  buffer += col.toDouble
-                else
-                  buffer += 0.0
+                if (col != "?") {
+                  if (col == "X") {
+                    buffer += 1.0
+                  } else {
+                    val value = col.toDouble
+                    //                  numAccumulator(i+1).add(value)
+                    if (knnLoc && i + 1 == 3) {
+                      buffer += kmeanModel.predict(Vectors.dense(Array(withIndex(2).toDouble, withIndex(3).toDouble)))
+                    } else if (knnLoc && i + 1 == 4) {
+                      buffer += 0.0
+                    } else {
+                      buffer += value
+                    }
+                  }
+                }
+                else {
+                  if (shouldReplace) {
+                    buffer += replaceMap(i)
+                  } else {
+                    buffer += 0.0
+                  }
+                }
               }
             }
           LabeledPoint.apply(label, Vectors.dense(buffer.toArray).toSparse)
 //          LabeledPoint.apply(label, Vectors.dense(buffer.toArray))
+//          println(buffer.toString())
+//          (label, buffer)
         } else {
           LabeledPoint.apply(0, Vectors.dense(new Array[Double](1657)).toSparse)
+//          val buffer = new ListBuffer[Double]()
+//          buffer ++ new Array[Double](1657)
+//          (0.0, buffer)
         }
       })
     newData
+//    newData.foreach(k => println(k._1 + k._2.toString()))
+//
+//    cateMap.foreach(k => println(k._2.toString()))
+//
+//    val maxCate = cateMap.map(k => {
+//      k._1 -> k._2.values.maxBy(vv => vv)
+//    })
+//
+//    val k = newData.count()
+//
+//    val allAccumulator = sc.broadcast(numAccumulator)
+//
+//    val replaced = newData.map(row => {
+//      val buffer = row._2
+//      val label: Double = row._1
+//      for (i <- buffer.indices) {
+//        if (buffer(i) == Int.MaxValue) {
+//          val j = i+1
+//          if (cate.contains(j)) {
+//            buffer(j) = maxCate(j)
+//          } else if (!skip.contains(j)) {
+//            buffer(j) = allAccumulator.value(i + 1).value / k
+//          }
+//        }
+//      }
+//      LabeledPoint.apply(label, Vectors.dense(buffer.toArray).toSparse)
+//    })
+//    replaced
   }
 
   def extractAllPoints(sc: SparkContext, fileSystem: FileSystem): Unit = {
@@ -135,15 +243,20 @@ object CleanData {
     }
 
     allPoints.repartition(1).saveAsTextFile("all_points")
-
+//    val points = sc.textFile("all_points")
+    val points = allPoints.map(p => {
+      Vectors.dense(Array(p._2, p._3))
+    })
+    val geo = new GeoKMeans
+    geo.getModel(points, fileSystem, sc)
   }
 
 
-  def decisionTreeTest(cleaned: RDD[LabeledPoint], conf:SparkConf): Unit = {
+  def decisionTreeTest(training: RDD[LabeledPoint], test: RDD[LabeledPoint], conf:SparkConf): Unit = {
 
-    val splits = cleaned.randomSplit(Array(0.7, 0.3))
-    val training = splits(0).cache()
-    val test = splits(1).cache()
+//    val splits = cleaned.randomSplit(Array(0.7, 0.3))
+//    val training = splits(0).cache()
+//    val test = splits(1).cache()
 
     val numTraining = training.count()
     val numTest = test.count()
@@ -181,70 +294,149 @@ object CleanData {
       val prediction = decisionTree.predict(point.features)
       (point.label, prediction)
     }
-    val testErr = labelAndPreds.filter(r => r._1 != r._2).count().toDouble / test.count()
-    println("Test Error = " + testErr)
+    val acc = labelAndPreds.filter(r => r._1 == r._2).count().toDouble / test.count()
+    println("Acc = " + acc)
+
+    bw.write("DecisionTree" + ' ' + maxDepth + ' ' + maxBins + ' ' + acc + '\n')
     println("Learned classification tree model:\n" + decisionTree.toDebugString)
   }
 
 
-  def randomForest(trainingData: RDD[LabeledPoint], testData: RDD[LabeledPoint], treeNum: Int, maxDepth:Int, maxBins: Int): Double = {
+  def randomForest(trainingData: RDD[LabeledPoint], testData: RDD[LabeledPoint], treeNum: Int, maxDepth:Int = 6,
+                   maxBins: Int = 32): Double = {
 
     // Train a RandomForest model.
     // Empty categoricalFeaturesInfo indicates all features are continuous.
     val numClasses = 2
     val categoricalFeaturesInfo = Map[Int, Int]()
-    val numTrees = 5
     // Use more in practice.
     val featureSubsetStrategy = "auto"
     // Let the algorithm choose.
     val impurity = "gini"
-    val maxDepth = 6
-    val maxBins = 28
 
     val model = RandomForest.trainClassifier(trainingData, numClasses, categoricalFeaturesInfo,
-      numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins)
+      treeNum, featureSubsetStrategy, impurity, maxDepth, maxBins)
 
     // Evaluate model on test instances and compute test error
     val labelAndPreds = testData.map { point =>
       val prediction = model.predict(point.features)
       (point.label, prediction)
     }
-    val testErr = labelAndPreds.filter(r => r._1 != r._2).count.toDouble / testData.count()
-    println("Test Error = " + testErr)
-    println("Learned classification forest model:\n" + model.toDebugString)
+
+//    labelAndPreds.saveAsTextFile("clean_RF_rst")
+
+    val testErr = labelAndPreds.filter(r => r._1 == r._2).count.toDouble / testData.count()
+    println("ACC = " + testErr)
+//    println("Learned classification forest model:\n" + model.toDebugString)
     testErr
   }
 
-  def GBT(data: RDD[LabeledPoint]): Unit = {
-    // Load and parse the data file.
-    // Split the data into training and test sets (30% held out for testing)
-    val splits = data.randomSplit(Array(0.7, 0.3))
-    val (trainingData, testData) = (splits(0), splits(1))
+  var numOfNodes = 5
+
+  def GBT(training: RDD[LabeledPoint], test: RDD[LabeledPoint]): Unit = {
 
     // Train a GradientBoostedTrees model.
     // The defaultParams for Classification use LogLoss by default.
     val boostingStrategy = BoostingStrategy.defaultParams("Classification")
 
-    boostingStrategy.setNumIterations(10) // Note: Use more iterations in practice.
+    val iterations = 150
+    val maxDepth = 6
+    boostingStrategy.setNumIterations(iterations) // Note: Use more iterations in practice.
     boostingStrategy.getTreeStrategy.setNumClasses(2)
-    boostingStrategy.getTreeStrategy.setMaxDepth(6)
-    boostingStrategy.getTreeStrategy.setImpurity(org.apache.spark.mllib.tree.impurity.Entropy)
+    boostingStrategy.getTreeStrategy.setMaxDepth(maxDepth)
+    boostingStrategy.getTreeStrategy.setImpurity(org.apache.spark.mllib.tree.impurity.Gini)
+
     // Empty categoricalFeaturesInfo indicates all features are continuous.
 //    boostingStrategy.getTreeStrategy.setCategoricalFeaturesInfo(new java.util.HashMap[Integer, Integer]())
+//    val partitioned = training.repartition(numOfNodes)
 
-    val model = GradientBoostedTrees.train(trainingData, boostingStrategy)
+    val model = GradientBoostedTrees.train(training, boostingStrategy)
 
     // Evaluate model on test instances and compute test error
-    val labelAndPreds = testData.map { point =>
+    val labelAndPreds = test.map { point =>
       val prediction = model.predict(point.features)
       (point.label, prediction)
     }
-    val testErr = labelAndPreds.filter(r => r._1 != r._2).count.toDouble / testData.count()
-    println("Test Error = " + testErr)
+    val acc = labelAndPreds.filter(r => r._1 == r._2).count.toDouble / test.count()
+    println("ACC = " + acc)
+    bw.write("GBT" + ' ' + iterations + ' ' + maxDepth + ' ' + acc + '\n')
     println("Learned classification GBT model:\n" + model.toDebugString)
   }
 
-//  def randomForest(data: RDD[LabeledPoint], conf: SparkConf): Unit = {
+  def LR(training: RDD[LabeledPoint], test: RDD[LabeledPoint]): Unit = {
+
+    // Run training algorithm to build the model
+    val model = new LogisticRegressionWithLBFGS()
+      .setNumClasses(2)
+      .run(training)
+
+    // Compute raw scores on the test set.
+    val predictionAndLabels = test.map { case LabeledPoint(label, features) =>
+      val prediction = model.predict(features)
+      (prediction, label)
+    }
+
+    // Get evaluation metrics.
+    val metrics = new MulticlassMetrics(predictionAndLabels)
+    val accuracy = metrics.accuracy
+
+    bw.write("LR" + ' '  + accuracy + '\n')
+    println(s"Accuracy = $accuracy")
+  }
+
+  def SVM(training: RDD[LabeledPoint], test: RDD[LabeledPoint]): Unit = {
+
+    // Run training algorithm to build the model
+    val numIterations = 150
+    val model = SVMWithSGD.train(training, numIterations)
+
+    // Clear the default threshold.
+    model.clearThreshold()
+
+    // Compute raw scores on the test set.
+    val scoreAndLabels = test.map { point =>
+      val score = model.predict(point.features)
+      (score, point.label)
+    }
+
+    // Get evaluation metrics.
+    val metrics = new BinaryClassificationMetrics(scoreAndLabels)
+    val auROC = metrics.areaUnderROC()
+
+    println("Area under ROC = " + auROC)
+  }
+
+  def IsotonicRegression(training: RDD[LabeledPoint], test: RDD[LabeledPoint]): Unit = {
+    // Create label, feature, weight tuples from input data with weight set to default value 1.0.
+//    val parsedData = data.map { labeledPoint =>
+//      (labeledPoint.label, labeledPoint.features(0), 1.0)
+//    }
+
+    // Split data into training (60%) and test (40%) sets.
+//    val splits = parsedData.randomSplit(Array(0.6, 0.4), seed = 11L)
+    val training_ = training.map { labeledPoint =>
+      (labeledPoint.label, labeledPoint.features(0), 1.0)
+    }
+    val test_ = test.map { labeledPoint =>
+      (labeledPoint.label, labeledPoint.features(0), 1.0)
+    }
+
+    // Create isotonic regression model from training data.
+    // Isotonic parameter defaults to true so it is only shown for demonstration
+    val model = new IsotonicRegression().setIsotonic(true).run(training_)
+
+    // Create tuples of predicted and real labels.
+    val predictionAndLabel = test_.map { point =>
+      val predictedLabel = model.predict(point._2)
+      (predictedLabel, point._1)
+    }
+
+    // Calculate mean squared error between predicted and real labels.
+    val meanSquaredError = predictionAndLabel.map { case (p, l) => math.pow(p - l, 2) }.mean()
+    println("Mean Squared Error = " + meanSquaredError)
+  }
+
+//  def randomForest(training: RDD[LabeledPoint], test: RDD[LabeledPoint, conf: SparkConf): Unit = {
 //
 //    val sparkSession =  SparkSession.builder().config(conf).getOrCreate()
 ////    val data = sparkSession.read.format("libsvm").load("data/mllib/sample_libsvm_data.txt")
@@ -321,6 +513,56 @@ object CleanData {
 //    println("Learned classification forest model:\n" + rfModel.toDebugString)
 //  }
 
+  def analysisData(data: RDD[String], sc: SparkContext, output: String = "analysis_2"): Unit = {
+    val result = data.flatMap(row => {
+      val listBuffer = new ListBuffer[(Int, Seq[String])]
+      val cols = row.split(",")
+
+      for (i <- 0 until cols.length) {
+        if (!skip.contains(i+1) && cols(i) != "0" && cols(i) != "X") {
+          listBuffer.append((i, Seq(cols(i))))
+        }
+      }
+      listBuffer
+    }).reduceByKey(_++_)
+      .map(rec =>{
+        val double_ = rec._2.map(v => {
+          if (v == "?") 0
+          else v.toDouble
+        })
+        if (cate.contains(rec._1 + 1)) {
+          val m = mutable.Map[Double, Int]()
+          double_.foreach(r => {
+            if (r != 0) {
+              if (m.contains(r)) {
+                m(r) += 1
+              } else {
+                m(r) = 1
+              }
+            }
+          })
+          (rec._1, m.keys.maxBy[Int](key => {
+            m(key)
+          }))
+        } else {
+          (rec._1, double_.sum[Double] / double_.size)
+        }
+      })
+
+    result.saveAsTextFile(output)
+  }
+
+  def test(sc: SparkContext): Unit = {
+    val data = Array(1,2,3,4,5,7)
+
+    val split = sc.parallelize(data).randomSplit(Array(0.7, 0,3), 1111L)
+
+    split.foreach(s => {
+      val f = s.collect().foldLeft("")((str, b) => str + " " + b)
+      println(f)
+    })
+  }
+
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
     val hadoopConf = new org.apache.hadoop.conf.Configuration()
@@ -329,9 +571,53 @@ object CleanData {
       .setAppName("final_project")
 
     val sc = new SparkContext(conf)
-    getSampleFile(sc, fileSystem)
 
-    val cleaned = generateCleanData(sc, sc.textFile(sampelFile))
+//    getSampleFile(sc, fileSystem)
+
+//    analysisData(sc.textFile(sampelFile), sc)
+
+//    val rec = Array(1.0,1.0,1.0, 1,1, 1.1)
+//
+//    val m = mutable.Map[Double, Int]()
+//
+//    rec.foreach(r => {
+//      if (m.contains(r)) {
+//        m(r) += 1
+//      } else {
+//        m(r) = 1
+//      }
+//    })
+//
+//    m.foreach(println(_))
+
+
+    val resplit = true
+    val randomSplit = false
+    var splits:Array[RDD[LabeledPoint]] = null
+
+    if (resplit) {
+      val data = sc.textFile(sampelFile)
+      val cleaned = generateCleanData(data, sc, fileSystem)
+      var seed = 1234L
+      if (randomSplit) {
+        seed = Random.nextLong()
+      }
+      splits = cleaned.randomSplit(Array(0.7, 0.3), seed)
+      splits.zipWithIndex.foreach {
+        case (rdd, i) => {
+          val fname = "split" + i
+          val fpath = new Path(fname)
+          if (fileSystem.exists(fpath)) fileSystem.delete(fpath, true)
+          rdd.saveAsTextFile("split" + i)
+      }}
+    } else {
+      splits = Array(MLUtils.loadLabeledPoints(sc, "split0"), MLUtils.loadLabeledPoints(sc, "split1")).map(_.repartition(4))
+    }
+
+    val (trainingData, testData) = (splits(0), splits(1))
+    println(trainingData.getNumPartitions + " " + testData.getNumPartitions)
+
+//    cleaned.saveAsTextFile("cleaned")
 
 //    val data = MLUtils.loadLibSVMFile(sc, "data/mllib/sample_libsvm_data.txt")
 
@@ -380,8 +666,12 @@ object CleanData {
 //    val projected = cleaned.map(p => p.copy(features = pca.transform(p.features)))
 
 //    decisionTreeTest(projected)
-//    decisionTreeTest(cleaned)
-    GBT(cleaned)
+//    decisionTreeTest(trainingData, testData, conf)
+//    GBT(trainingData, testData)
+//    LR(trainingData, testData)
+//    IsotonicRegression(trainingData, testData)
+//    println(sc.defaultParallelism + " " + trainingData.)
+    randomForest(trainingData, testData, 100, maxDepth =25, maxBins = 64)
 
 //    val rstBuffer = new ListBuffer[String]
 //    for (treeNum <- 1 to 10) {
@@ -402,10 +692,13 @@ object CleanData {
 //
 //    sc.makeRDD(rstBuffer).saveAsTextFile("result")
 
-//    val points = sc.textFile("all_points")
-//
-//    val geo = GeoKMeans
-//    geo.runKMeans(points)
+//    SVM(cleaned)
+
+//    val k = MissAnalysis
+//    k.checkMissing(sc, fileSystem)
+
+    bw.close()
+
     sc.stop()
   }
 }
