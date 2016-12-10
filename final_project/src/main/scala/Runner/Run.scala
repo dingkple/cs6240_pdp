@@ -4,7 +4,10 @@ import java.net.URI
 
 import Models.GeoAnalysis.GeoKMeans
 import org.apache.hadoop.fs.{FileSystem, Path}
+import org.apache.spark.mllib.classification.LogisticRegressionModel
+import org.apache.spark.mllib.classification.{LogisticRegressionWithLBFGS, SVMModel, SVMWithSGD}
 import org.apache.spark.mllib.clustering.KMeansModel
+import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, MulticlassMetrics}
 import org.apache.spark.mllib.linalg.Vector
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.regression.LabeledPoint
@@ -113,7 +116,6 @@ object Run {
   def GBT(training: RDD[LabeledPoint], test: RDD[LabeledPoint], numOfIteration: Int = 50, maxDepth: Int = 6,
           learningRate: Double = 0.1, maxBin: Int = 32)
   : (GradientBoostedTreesModel, Double) = {
-
     // Train a GradientBoostedTrees model.
     // The defaultParams for Classification use LogLoss by default.
     val boostingStrategy = BoostingStrategy.defaultParams("Classification")
@@ -137,7 +139,7 @@ object Run {
     }
     val acc = labelAndPredictions.filter(r => r._1 == r._2).count.toDouble / test.count()
     println("ACC = " + acc)
-    //    println("Learned classification GBT model:\n" + model.toDebugString)
+    //    println("Learned classification GBTodel:\n" + model.toDebugString)
     (model, acc)
   }
 
@@ -217,11 +219,62 @@ object Run {
     (best, baseDir + mb + "_" + md + "_" + iter)
   }
 
+//  def LR(training: RDD[LabeledPoint], test: RDD[LabeledPoint]): (LogisticRegressionModel, Double) = {
+//
+//    // Run training algorithm to build the model
+//    val model = new LogisticRegressionWithLBFGS()
+//      .setNumClasses(2)
+//      .run(training)
+//
+//    // Compute raw scores on the test set.
+//    val predictionAndLabels = test.map { case LabeledPoint(label, features) =>
+//      val prediction = model.predict(features)
+//      (prediction, label)
+//    }
+//
+//    predictionAndLabels.foreach(println(_))
+//
+//    // Get evaluation metrics.
+//    val metrics = new MulticlassMetrics(predictionAndLabels)
+//    val accuracy = metrics.accuracy
+//
+//    println(s"Accuracy = $accuracy")
+//    (model, accuracy)
+//  }
+//
+//  def SVM(training: RDD[LabeledPoint], test: RDD[LabeledPoint]): (SVMModel, Double) = {
+//
+//    // Run training algorithm to build the model
+//    val numIterations = 150
+//    val model = SVMWithSGD.train(training, numIterations)
+//
+//    // Clear the default threshold.
+//    model.clearThreshold()
+//
+//    // Compute raw scores on the test set.
+//    val scoreAndLabels = test.map { point =>
+//      val score = model.predict(point.features)
+//      (score, point.label)
+//    }
+//
+//    // Get evaluation metrics.
+//    val metrics = new BinaryClassificationMetrics(scoreAndLabels)
+//    val auROC = metrics.areaUnderROC()
+//
+//
+//    scoreAndLabels.foreach(println(_))
+//
+//    val acc = scoreAndLabels.filter(rec => rec._1 == rec._2).count().toDouble / scoreAndLabels.count()
+//
+//    println("Area under ROC = " + acc)
+//    (model, acc)
+//  }
+
   def main(args: Array[String]): Unit = {
     val inputFile = args(0)
     val testFile = args(1)
     val output = args(2)
-    val defaultParallelism = args(3).toInt * 2
+    val defaultParallelism = args(3).toInt * 3
     val algo = args(4)
     val useKmeans = args(5).toBoolean
 
@@ -282,7 +335,7 @@ object Run {
 
     //    val seed = 1234L
     val seed = 435345L
-    val shouldKFold = true
+    val shouldKFold = false
     val kFold = 5
     val tune = false
 
@@ -299,7 +352,7 @@ object Run {
         = (kFoldArray(i)._1.persist(StorageLevel.MEMORY_AND_DISK), kFoldArray(i)._2.persist(StorageLevel.MEMORY_AND_DISK))
 
         //    val (model, acc) = randomForest(trainingData, testData, 200, maxDepth = 20)
-        val (model, acc) = GBT(trainingData, testData, maxDepth = 2, numOfIteration = 10)
+        val (model, acc) = GBT(trainingData, testData, maxDepth = 2, numOfIteration = 30)
 
         if (algo == "RF") {
           model.save(sc, output + "/RF_model" + i)
@@ -323,8 +376,9 @@ object Run {
         val tuneRst = tuneParameters(trainingData, testData, 6, sc, output + "/GBT_model", fileSystem)
         modelPath = tuneRst._2
       } else {
-        //    val (model, acc) = randomForest(trainingData, testData, 200, maxDepth = 20)
-        val (model, acc) = GBT(trainingData, testData, maxDepth = 2, numOfIteration = 30)
+//        val (model, acc) = randomForest(trainingData, testData, 200, maxDepth = 20)
+        val (model, acc) = GBT(trainingData, testData, numOfIteration = 100)
+//        val (model, acc) = LR(trainingData, testData)
         if (algo == "RF") {
           model.save(sc, output + "/RF_model")
         } else {
@@ -378,7 +432,7 @@ object Run {
     val result = transformedTest.map(rec => {
       val predicted = model.predict(rec._2)
       rec._1 + "," + predicted
-    }).repartition(1)
+    }).coalesce(1)
 
     result.saveAsTextFile(output + "/prediction")
   }

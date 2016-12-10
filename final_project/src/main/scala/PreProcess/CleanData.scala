@@ -269,7 +269,7 @@ object CleanData {
     val numClasses = 2
     val impurity = "gini"
 //    val impurity = "entropy"
-    val maxDepth = 6
+    val maxDepth = 4
     val maxBins = 32
 
 //    val sqLContext = new SparkSession.Builder().config(conf).getOrCreate()
@@ -666,12 +666,13 @@ object CleanData {
 //    val projected = cleaned.map(p => p.copy(features = pca.transform(p.features)))
 
 //    decisionTreeTest(projected)
-//    decisionTreeTest(trainingData, testData, conf)
+    decisionTreeTest(trainingData, testData, conf)
 //    GBT(trainingData, testData)
 //    LR(trainingData, testData)
+
 //    IsotonicRegression(trainingData, testData)
 //    println(sc.defaultParallelism + " " + trainingData.)
-    randomForest(trainingData, testData, 100, maxDepth =25, maxBins = 64)
+//    randomForest(trainingData, testData, 100, maxDepth =25, maxBins = 64)
 
 //    val rstBuffer = new ListBuffer[String]
 //    for (treeNum <- 1 to 10) {
