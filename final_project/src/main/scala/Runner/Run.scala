@@ -4,21 +4,14 @@ import java.net.URI
 
 import Models.GeoAnalysis.GeoKMeans
 import org.apache.hadoop.fs.{FileSystem, Path}
-import org.apache.spark.mllib.classification.LogisticRegressionModel
-import org.apache.spark.mllib.classification.{LogisticRegressionWithLBFGS, SVMModel, SVMWithSGD}
-import org.apache.spark.mllib.clustering.KMeansModel
-import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, MulticlassMetrics}
 import org.apache.spark.mllib.linalg.Vector
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.tree.{GradientBoostedTrees, RandomForest}
 import org.apache.spark.mllib.tree.configuration.BoostingStrategy
-import org.apache.spark.mllib.tree.loss.Losses
 import org.apache.spark.mllib.tree.model.{GradientBoostedTreesModel, RandomForestModel}
 import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.types.{StructField, StructType}
-import org.apache.spark.sql.{Row, SparkSession}
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -26,16 +19,15 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
-/**
-  * Created by kple on 12/5/16.
-  */
-object Run {
-
-  def extractAllPoints(rDD: RDD[String]): Unit = {
-
-  }
-
-  def transFormLine(cols: Array[String], kMeansModel: KMeansModel = null, useKMeans: Boolean = true): (String, Double, Vector) = {
+class Transform {
+  /**
+    * Transform an array of string to (sampleId, label, features), categorical and numerical features are handled,
+    * all missing data is ignore.
+    * @param cols
+    * @return (String, Double, Vector) namely SampleId, label, features are returned, "features" is a sparse vector
+    */
+  def transFormLine(cols: Array[String])
+  : (String, Double, Vector) = {
 
     val config = Utils.Config
     var sampleID = ""
@@ -51,21 +43,16 @@ object Run {
         if (config.geo.contains(i)) {
           if (i == config.geo(0)) {
             if (cols(config.geo(0)) != "?" && cols(config.geo(1)) != "?") {
-              val vec = geoTranslator.getGeoVector(cols)
-              if (useKMeans && kMeansModel != null) {
-                indiceBuffer += i
-                valueBuffer += kMeansModel.predict(vec)
-                println(vec + " " + kMeansModel.predict(vec))
-              } else {
-                indiceBuffer += i
-                valueBuffer += cols(2).toDouble
-
-                indiceBuffer += i + 1
-                valueBuffer += cols(3).toDouble
-              }
+              indiceBuffer += i
+              valueBuffer += cols(2).toDouble
+              indiceBuffer += i + 1
+              valueBuffer += cols(3).toDouble
             }
           }
         } else if (config.cate.contains(i + 1)) {
+          /*
+          Ignore all missing values
+           */
           if (cols(i) != "?") {
             val value = cols(i).toDouble
             indiceBuffer += i
@@ -92,27 +79,25 @@ object Run {
     (sampleID, label, Vectors.sparse(config.NUM_OF_FEATURE, indiceBuffer.toArray[Int], valueBuffer.toArray[Double]))
   }
 
-  def transformToLabledPointsWithLabel(input: RDD[Array[String]], fileSystem: FileSystem, sc: SparkContext,
-                                       kMeansModel: KMeansModel):
-  RDD[(String, LabeledPoint)] = {
+}
 
-    val transformed = input.map(row => {
-      val (id, label, features) = transFormLine(row, kMeansModel)
-      (id, LabeledPoint(label, features))
-    })
-    transformed
-  }
+/**
+  * Created by kple on 12/5/16.
+  */
+object Run {
 
-  def transformToLabledPoints(input: RDD[Array[String]], fileSystem: FileSystem, sc: SparkContext, kMeansModel: KMeansModel):
-  RDD[LabeledPoint] = {
 
-    val transformed = input.map(row => {
-      val (id, label, features) = transFormLine(row, kMeansModel)
-      LabeledPoint.apply(label, features)
-    })
-    transformed
-  }
-
+  /**
+    * Use Gradient Boosted Tree to train the data. Model and accuracy on the validation data is returned
+    * @param training training data
+    * @param test validation data
+    * @param numOfIteration ie, number of trees
+    * @param maxDepth max depth of each tree
+    * @param learningRate use this to tune the speed of model adapting to the data
+    * @param maxBin max bins for splitting
+    * @return Maximum number of bins used for discretizing continuous features and for choosing how to split on
+    *         features at each node. More bins give higher granularity.
+    */
   def GBT(training: RDD[LabeledPoint], test: RDD[LabeledPoint], numOfIteration: Int = 50, maxDepth: Int = 6,
           learningRate: Double = 0.1, maxBin: Int = 32)
   : (GradientBoostedTreesModel, Double) = {
@@ -126,10 +111,6 @@ object Run {
     boostingStrategy.getTreeStrategy.setMaxBins(maxBin)
     boostingStrategy.setLearningRate(learningRate)
 
-    // Empty categoricalFeaturesInfo indicates all features are continuous.
-    //    boostingStrategy.getTreeStrategy.setCategoricalFeaturesInfo(new java.util.HashMap[Integer, Integer]())
-    //    val partitioned = training.repartition(numOfNodes)
-
     val model = GradientBoostedTrees.train(training, boostingStrategy)
 
     // Evaluate model on test instances and compute test error
@@ -137,13 +118,21 @@ object Run {
       val prediction = model.predict(point.features)
       (point.label, prediction)
     }
+
     val acc = labelAndPredictions.filter(r => r._1 == r._2).count.toDouble / test.count()
     println("ACC = " + acc)
-    //    println("Learned classification GBTodel:\n" + model.toDebugString)
     (model, acc)
   }
 
-
+  /**
+    * RandomForest Model to train the data
+    * @param trainingData
+    * @param testData
+    * @param treeNum
+    * @param maxDepth
+    * @param maxBins
+    * @return
+    */
   def randomForest(trainingData: RDD[LabeledPoint], testData: RDD[LabeledPoint], treeNum: Int, maxDepth: Int = 10,
                    maxBins: Int = 100): (RandomForestModel, Double) = {
 
@@ -172,12 +161,18 @@ object Run {
     (model, acc)
   }
 
+  /*
+  Write data to file
+   */
   def writeAccTo(s: String, fileSystem: FileSystem, acc: String) = {
     val f = fileSystem.create(new Path(s))
     f.writeUTF("acc: " + acc)
     f.close()
   }
 
+  /*
+  Write data to file, all the turning data.
+   */
   def writeTuneResult(path: String, fileSystem: FileSystem, rst:mutable.HashMap[Double, (Int, Int, Int)]): Unit = {
     val f = fileSystem.create(new Path(path))
     for (k <- rst.keys) {
@@ -187,6 +182,19 @@ object Run {
   }
 
 
+  /**
+    * Tuning the parameter of GBT, onlly maxBins, maxDepth, maxIteration is consider here, the strategy of find the
+    * parameter to test is random choosing. For each parameter, choose a possible value from the given range. Then
+    * check if this set of parameter is already tested, if yes, generate next set, if not, test it and save the model
+    * and result. In the end, select the best one and write all the results to disk
+    * @param trainingData
+    * @param testData
+    * @param iteration
+    * @param sc
+    * @param baseDir
+    * @param fileSystem
+    * @return best accuracy and the path to best model
+    */
   def tuneParameters(trainingData: RDD[LabeledPoint], testData: RDD[LabeledPoint], iteration: Int,
                      sc: SparkContext, baseDir: String, fileSystem: FileSystem): (Double, String) = {
 
@@ -219,76 +227,20 @@ object Run {
     (best, baseDir + mb + "_" + md + "_" + iter)
   }
 
-//  def LR(training: RDD[LabeledPoint], test: RDD[LabeledPoint]): (LogisticRegressionModel, Double) = {
-//
-//    // Run training algorithm to build the model
-//    val model = new LogisticRegressionWithLBFGS()
-//      .setNumClasses(2)
-//      .run(training)
-//
-//    // Compute raw scores on the test set.
-//    val predictionAndLabels = test.map { case LabeledPoint(label, features) =>
-//      val prediction = model.predict(features)
-//      (prediction, label)
-//    }
-//
-//    predictionAndLabels.foreach(println(_))
-//
-//    // Get evaluation metrics.
-//    val metrics = new MulticlassMetrics(predictionAndLabels)
-//    val accuracy = metrics.accuracy
-//
-//    println(s"Accuracy = $accuracy")
-//    (model, accuracy)
-//  }
-//
-//  def SVM(training: RDD[LabeledPoint], test: RDD[LabeledPoint]): (SVMModel, Double) = {
-//
-//    // Run training algorithm to build the model
-//    val numIterations = 150
-//    val model = SVMWithSGD.train(training, numIterations)
-//
-//    // Clear the default threshold.
-//    model.clearThreshold()
-//
-//    // Compute raw scores on the test set.
-//    val scoreAndLabels = test.map { point =>
-//      val score = model.predict(point.features)
-//      (score, point.label)
-//    }
-//
-//    // Get evaluation metrics.
-//    val metrics = new BinaryClassificationMetrics(scoreAndLabels)
-//    val auROC = metrics.areaUnderROC()
-//
-//
-//    scoreAndLabels.foreach(println(_))
-//
-//    val acc = scoreAndLabels.filter(rec => rec._1 == rec._2).count().toDouble / scoreAndLabels.count()
-//
-//    println("Area under ROC = " + acc)
-//    (model, acc)
-//  }
 
   def main(args: Array[String]): Unit = {
     val inputFile = args(0)
     val testFile = args(1)
     val output = args(2)
     val defaultParallelism = args(3).toInt * 3
-    val algo = args(4)
-    val useKmeans = args(5).toBoolean
 
     val conf = new SparkConf()
     val hadoopConf = new org.apache.hadoop.conf.Configuration()
     val fileSystem = org.apache.hadoop.fs.FileSystem.get(new URI(output), hadoopConf)
-//    conf.setMaster("local[*]")
+    conf.setMaster("local[*]")
     conf.setAppName("final_project")
     conf.set("spark.default.parallelism", defaultParallelism.toString)
     val sc = new SparkContext(conf)
-
-    //    val cleaner = PreProcess.CleanData
-
-    //    cleaner.getSampleFile(sc, fileSystem)
 
     if (fileSystem.exists(new Path(output))) fileSystem.delete(new Path(output), true)
 
@@ -296,34 +248,13 @@ object Run {
     val numOfPartition = defaultParallelism * 2
     println(numOfPartition)
 
-    var kMeansModel: KMeansModel = null
-    if (useKmeans) {
-      val geoVectors = sc.textFile(inputFile, numOfPartition)
-        .map(row => {
-          val cols = row.split(",")
-          if (!cols(0).startsWith("SAMPLING_EVENT_ID")) {
-            val kMeansTrainer = new GeoKMeans
-            kMeansTrainer.getGeoVector(cols)
-          } else
-            Vectors.dense(Array.emptyDoubleArray)
-        })
-        .persist(StorageLevel.MEMORY_AND_DISK).filter(_.size > 0)
-
-      val kMeansTrainer = new GeoKMeans
-      kMeansModel = kMeansTrainer.getModel(geoVectors, fileSystem, sc)
-
-      geoVectors.unpersist()
-      kMeansModel.save(sc, output + "/kMeansModel")
-    } else {
-      kMeansModel = null
-    }
-
     val transformedInput = sc.textFile(inputFile, numOfPartition)
       .map(row => {
         val cols = row.split(",")
+        val transform = new Transform
 
         if (!cols(0).startsWith("SAMPLING_EVENT_ID") && cols(labelIdx - 1) != "?") {
-          val (id, label, features) = transFormLine(cols, kMeansModel, useKmeans)
+          val (id, label, features) = transform.transFormLine(cols)
           LabeledPoint(label, features)
         }
         else {
@@ -333,7 +264,7 @@ object Run {
       .persist(StorageLevel.MEMORY_AND_DISK)
       .filter(_.label != -1)
 
-    //    val seed = 1234L
+
     val seed = 435345L
     val shouldKFold = false
     val kFold = 5
@@ -343,22 +274,21 @@ object Run {
     var best = 0.0
     var modelPath = ""
 
+    // Use K-fold to get the average and stddev of the training result.
     if (shouldKFold) {
       val kFoldArray = MLUtils.kFold(transformedInput, kFold, seed)
       transformedInput.unpersist()
 
       for (i <- 0 until kFold) {
         val (trainingData: RDD[LabeledPoint], testData: RDD[LabeledPoint])
-        = (kFoldArray(i)._1.persist(StorageLevel.MEMORY_AND_DISK), kFoldArray(i)._2.persist(StorageLevel.MEMORY_AND_DISK))
+        = (
+          kFoldArray(i)._1.persist(StorageLevel.MEMORY_AND_DISK),
+          kFoldArray(i)._2.persist(StorageLevel.MEMORY_AND_DISK)
+        )
 
-        //    val (model, acc) = randomForest(trainingData, testData, 200, maxDepth = 20)
-        val (model, acc) = GBT(trainingData, testData, maxDepth = 2, numOfIteration = 30)
+        val (model, acc) = GBT(trainingData, testData, maxDepth = 6, numOfIteration = 100)
 
-        if (algo == "RF") {
-          model.save(sc, output + "/RF_model" + i)
-        } else {
-          model.save(sc, output + "/GBT_model" + i)
-        }
+        model.save(sc, output + "/GBT_model" + i)
         accBuffer += acc
 
         trainingData.unpersist()
@@ -367,7 +297,7 @@ object Run {
       best = accBuffer.maxBy(k => k)
     } else {
 
-      //    val splits = transformedInput.randomSplit(Array(0.7, 0.3), seed)
+      // K-fold is too expensive, so for some parameters, only run once.
       val splits = transformedInput.randomSplit(Array(0.7, 0.3))
       val (trainingData, testData)
       = (splits(0).persist(StorageLevel.MEMORY_AND_DISK), splits(1).persist(StorageLevel.MEMORY_AND_DISK))
@@ -376,14 +306,8 @@ object Run {
         val tuneRst = tuneParameters(trainingData, testData, 6, sc, output + "/GBT_model", fileSystem)
         modelPath = tuneRst._2
       } else {
-//        val (model, acc) = randomForest(trainingData, testData, 200, maxDepth = 20)
-        val (model, acc) = GBT(trainingData, testData, numOfIteration = 100)
-//        val (model, acc) = LR(trainingData, testData)
-        if (algo == "RF") {
-          model.save(sc, output + "/RF_model")
-        } else {
-          model.save(sc, output + "/GBT_model")
-        }
+        val (model, acc) = GBT(trainingData, testData, numOfIteration = 100, maxDepth = 7)
+        model.save(sc, output + "/GBT_model")
 
         trainingData.unpersist()
         testData.unpersist()
@@ -391,15 +315,13 @@ object Run {
       }
     }
 
-    var algoStr = ""
-    if (algo == "RF") {
-      algoStr = "RF_model"
-    } else {
-      algoStr = "GBT_model"
-    }
+    val algorithmStr = "GBT_model"
 
+    /*
+    Save K-Fold result to file
+     */
     if (shouldKFold) {
-      modelPath = output + "/" + algoStr + accBuffer.indexOf(best)
+      modelPath = output + "/" + algorithmStr + accBuffer.indexOf(best)
 
       val count = accBuffer.size
       val mean = accBuffer.sum / count
@@ -410,30 +332,12 @@ object Run {
         .foldLeft("")((left, num) => left + " " + num.toString))
     } else {
       if (!tune) {
-        modelPath = output + "/" + algoStr
+        modelPath = output + "/" + algorithmStr
       }
     }
 
     val model = GradientBoostedTreesModel.load(sc, modelPath)
+    if (!fileSystem.exists(new Path(output + "/GBT_model"))) model.save(sc, output + "/GBT_model")
 
-    val transformedTest = sc.textFile(testFile, numOfPartition)
-      .map(row => {
-        val cols = row.split(",")
-        if (!cols(0).startsWith("SAMPLING_EVENT_ID")) {
-          val (id, label, features) = transFormLine(cols, kMeansModel, useKmeans)
-          (id, features)
-        } else {
-          ("", Vectors.dense(Array.emptyDoubleArray))
-        }
-      })
-      .filter(_._1 != "")
-      .persist(StorageLevel.MEMORY_AND_DISK)
-
-    val result = transformedTest.map(rec => {
-      val predicted = model.predict(rec._2)
-      rec._1 + "," + predicted
-    }).coalesce(1)
-
-    result.saveAsTextFile(output + "/prediction")
   }
 }
